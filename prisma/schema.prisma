@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model bimbingan {
+  bimbingan_id                        String                @id @db.VarChar(255)
+  dosen_id                            String                @db.VarChar(100)
+  mahasiswa_id                        String                @db.VarChar(100)
+  status_bimbingan                    status_bimbingan_enum
+  total_bimbingan                     Int
+  users_bimbingan_dosen_idTousers     users                 @relation("bimbingan_dosen_idTousers", fields: [dosen_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  users_bimbingan_mahasiswa_idTousers users                 @relation("bimbingan_mahasiswa_idTousers", fields: [mahasiswa_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction)
+  jadwal                              jadwal[]
+  progress                            progress[]
+}
+
+model jadwal {
+  bimbingan_id   String             @db.VarChar(255)
+  datetime       DateTime           @db.Timestamp(6)
+  lokasi         String
+  note_mahasiswa String
+  note_dosen     String?
+  status_jadwal  status_jadwal_enum
+  bimbingan      bimbingan          @relation(fields: [bimbingan_id], references: [bimbingan_id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([bimbingan_id, datetime])
+}
+
+model progress {
+  progress_id        String               @id @db.VarChar(255)
+  bimbingan_id       String               @db.VarChar(255)
+  datetime           DateTime             @db.Timestamp(6)
+  subject_progress   String               @db.VarChar(255)
+  file_progress      String
+  submit_at          DateTime             @db.Timestamp(6)
+  file_koreksi       String?
+  koreksi_at         DateTime?            @db.Timestamp(6)
+  evaluasi_dosen     String?
+  note_mahasiswa     String?
+  status_progress    status_progress_enum
+  jenis_bimbingan    jenis_bimbingan_enum
+  revisi_number      Int
+  parent_progress_id String?              @db.VarChar(255)
+  bimbingan          bimbingan            @relation(fields: [bimbingan_id], references: [bimbingan_id], onDelete: NoAction, onUpdate: NoAction)
+  progress           progress?            @relation("progressToprogress", fields: [parent_progress_id], references: [progress_id], onDelete: NoAction, onUpdate: NoAction)
+  other_progress     progress[]           @relation("progressToprogress")
+}
+
+model referensi_ta {
+  nim_mahasiswa  String   @id @db.VarChar(25)
+  nama_mahasiswa String   @db.VarChar(255)
+  judul          String   @db.VarChar(255)
+  doc_url        String
+  created_at     DateTime @db.Timestamp(6)
+  updated_at     DateTime @db.Timestamp(6)
+}
+
+model users {
+  user_id                                 String           @id @db.VarChar(100)
+  nama                                    String           @db.VarChar(255)
+  no_whatsapp                             String           @db.VarChar(25)
+  sandi                                   String           @db.VarChar(255)
+  role                                    role_enum
+  photo_url                               String?
+  status_user                             status_user_enum
+  created_at                              DateTime?        @db.Timestamp(6)
+  updated_at                              DateTime?        @db.Timestamp(6)
+  bimbingan_bimbingan_dosen_idTousers     bimbingan[]      @relation("bimbingan_dosen_idTousers")
+  bimbingan_bimbingan_mahasiswa_idTousers bimbingan[]      @relation("bimbingan_mahasiswa_idTousers")
+}
+
+enum jenis_bimbingan_enum {
+  offline
+  online
+}
+
+enum role_enum {
+  mahasiswa
+  dosen
+  admin
+}
+
+enum status_bimbingan_enum {
+  ongoing
+  done
+  warning
+  terminated
+}
+
+enum status_jadwal_enum {
+  waiting
+  accepted
+  declined
+}
+
+enum status_progress_enum {
+  unread
+  read
+  need_revision
+  done
+}
+
+enum status_user_enum {
+  active
+  inactive
+}
