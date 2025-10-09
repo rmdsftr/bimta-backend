@@ -52,12 +52,14 @@ model progress {
 }
 
 model referensi_ta {
-  nim_mahasiswa  String   @id @db.VarChar(25)
-  nama_mahasiswa String   @db.VarChar(255)
-  judul          String   @db.VarChar(255)
+  nim_mahasiswa  String    @id @db.VarChar(25)
+  nama_mahasiswa String    @db.VarChar(255)
+  judul          String    @db.VarChar(255)
   doc_url        String
-  created_at     DateTime @db.Timestamp(6)
-  updated_at     DateTime @db.Timestamp(6)
+  created_at     DateTime? @db.Timestamptz(6)
+  updated_at     DateTime? @db.Timestamptz(6)
+  topik          String?   @db.VarChar(100)
+  tahun          Int?
 }
 
 model users {

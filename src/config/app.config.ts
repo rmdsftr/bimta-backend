@@ -1,0 +1,1 @@
+export const secureType = process.env.NODE_ENV === 'development';
