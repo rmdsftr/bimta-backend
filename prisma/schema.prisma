@@ -34,10 +34,10 @@ model jadwal {
 model progress {
   progress_id        String               @id @db.VarChar(255)
   bimbingan_id       String               @db.VarChar(255)
-  datetime           DateTime             @db.Timestamp(6)
+  datetime           DateTime             @default(now()) @db.Timestamptz(6)
   subject_progress   String               @db.VarChar(255)
   file_progress      String
-  submit_at          DateTime             @db.Timestamp(6)
+  submit_at          DateTime             @db.Timestamptz(6)
   file_koreksi       String?
   koreksi_at         DateTime?            @db.Timestamp(6)
   evaluasi_dosen     String?
@@ -46,6 +46,7 @@ model progress {
   jenis_bimbingan    jenis_bimbingan_enum
   revisi_number      Int
   parent_progress_id String?              @db.VarChar(255)
+  file_name          String?              @db.VarChar(255)
   bimbingan          bimbingan            @relation(fields: [bimbingan_id], references: [bimbingan_id], onDelete: NoAction, onUpdate: NoAction)
   progress           progress?            @relation("progressToprogress", fields: [parent_progress_id], references: [progress_id], onDelete: NoAction, onUpdate: NoAction)
   other_progress     progress[]           @relation("progressToprogress")
@@ -72,6 +73,7 @@ model users {
   status_user                             status_user_enum
   created_at                              DateTime?        @db.Timestamp(6)
   updated_at                              DateTime?        @db.Timestamp(6)
+  judul                                   String?          @db.VarChar(255)
   bimbingan_bimbingan_dosen_idTousers     bimbingan[]      @relation("bimbingan_dosen_idTousers")
   bimbingan_bimbingan_mahasiswa_idTousers bimbingan[]      @relation("bimbingan_mahasiswa_idTousers")
 }

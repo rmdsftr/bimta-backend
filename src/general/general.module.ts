@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
-import { GeneralService } from "./general.service";
-import { GeneralController } from "./general.controller";
-import { PrismaModule } from "../prisma/prisma.module";
+import { GeneralService } from "./general.service.js";
+import { GeneralController } from "./general.controller.js";
+import { PrismaModule } from "../prisma/prisma.module.js";
 
 @Module({
     providers: [GeneralService],
