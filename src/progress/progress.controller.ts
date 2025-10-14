@@ -31,4 +31,14 @@ export class ProgressController{
     async allProgressOnline(@Param('mahasiswa_id') mahasiswa_id:string){
         return await this.progressService.allProgressOnline(mahasiswa_id);
     }
+
+    @Get('dosen/:dosen_id')
+    async progressOnlineMahasiswa(@Param('dosen_id') dosen_id:string){
+        return await this.progressService.progressOnlineMahasiswa(dosen_id);
+    }
+
+    @Get('pending/:dosen_id')
+    async hitungPendingReview(@Param('dosen_id') dosen_id:string){
+        return await this.progressService.hitungPendingReview(dosen_id);
+    }
 }

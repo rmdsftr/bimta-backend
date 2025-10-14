@@ -113,4 +113,89 @@ export class ProgressService{
         }
     }
     
+    async progressOnlineMahasiswa(dosen_id:string){
+        try {
+            const bimbinganList = await this.prisma.bimbingan.findMany({
+                where: {
+                    dosen_id: dosen_id,
+                },
+            });
+            
+            const progress = await this.prisma.progress.findMany({
+                where: {
+                    jenis_bimbingan: 'online',
+                    bimbingan_id: {
+                        in: bimbinganList.map((item) => item.bimbingan_id),
+                    },
+                },
+                select: {
+                    subject_progress: true,
+                    note_mahasiswa: true,
+                    file_name: true,
+                    file_progress: true,
+                    status_progress: true,
+                    bimbingan: {
+                        select: {
+                            users_bimbingan_mahasiswa_idTousers: {
+                                select: {
+                                    user_id: true,
+                                    nama: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+            
+            const data = progress.map((item) => ({
+                nama: item.bimbingan.users_bimbingan_mahasiswa_idTousers.nama,
+                nim: item.bimbingan.users_bimbingan_mahasiswa_idTousers.user_id,
+                judul: item.subject_progress,
+                pesan : item.note_mahasiswa,
+                status: item.status_progress,
+                file_name: item.file_name,
+                file_url: item.file_progress
+            }))
+
+            return data;
+        } catch (error) {
+            console.error(error);
+            if (!(error instanceof Error)) {
+                throw new InternalServerErrorException('Terjadi kesalahan pada server');
+            }
+            throw error;
+        }
+    }
+    
+    async hitungPendingReview(dosen_id:string){
+        try {
+            const bimbingan = await this.prisma.bimbingan.findMany({
+                where: {
+                    dosen_id: dosen_id
+                }, select: {
+                    bimbingan_id: true
+                }
+            });
+
+            const pending = await this.prisma.progress.count({
+                where: {
+                    status_progress: {
+                        not: 'done'
+                    },
+                    jenis_bimbingan: 'online',
+                    bimbingan_id: {
+                        in: bimbingan.map((item) => item.bimbingan_id)
+                    }
+                }
+            })
+
+            return pending;
+        } catch (error) {
+            console.error(error);
+            if (!(error instanceof Error)) {
+                throw new InternalServerErrorException('Terjadi kesalahan pada server');
+            }
+            throw error;
+        }
+    }
 }

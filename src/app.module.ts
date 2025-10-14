@@ -7,6 +7,7 @@ import { BimbinganModule } from './bimbingan/bimbingan.module.js';
 import { ProgressModule } from './progress/progress.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { ProfileModule } from './profile/profil.module.js';
 
 @Module({
   imports: [ConfigModule.forRoot({
@@ -14,7 +15,7 @@ import { AppService } from './app.service.js';
     cache: true,
     envFilePath: ['.env'],
     load: [() => ({ jwt: jwtConfig})]
-  }), AuthModule, GeneralModule, BimbinganModule, ProgressModule],
+  }), AuthModule, GeneralModule, BimbinganModule, ProgressModule, ProfileModule],
   controllers: [AppController],
   providers: [AppService],
 })
