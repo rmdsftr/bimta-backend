@@ -20,13 +20,14 @@ model bimbingan {
 }
 
 model jadwal {
-  bimbingan_id   String             @db.VarChar(255)
-  datetime       DateTime           @db.Timestamp(6)
-  lokasi         String
-  note_mahasiswa String
-  note_dosen     String?
-  status_jadwal  status_jadwal_enum
-  bimbingan      bimbingan          @relation(fields: [bimbingan_id], references: [bimbingan_id], onDelete: NoAction, onUpdate: NoAction)
+  bimbingan_id    String             @db.VarChar(255)
+  datetime        DateTime           @db.Timestamp(6)
+  lokasi          String
+  note_mahasiswa  String
+  note_dosen      String?
+  status_jadwal   status_jadwal_enum
+  judul_pertemuan String?            @db.VarChar(255)
+  bimbingan       bimbingan          @relation(fields: [bimbingan_id], references: [bimbingan_id], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([bimbingan_id, datetime])
 }
@@ -76,6 +77,17 @@ model users {
   judul                                   String?          @db.VarChar(255)
   bimbingan_bimbingan_dosen_idTousers     bimbingan[]      @relation("bimbingan_dosen_idTousers")
   bimbingan_bimbingan_mahasiswa_idTousers bimbingan[]      @relation("bimbingan_mahasiswa_idTousers")
+  jadwal_dosen                            jadwal_dosen[]
+}
+
+model jadwal_dosen {
+  jadwal_dosen_id String    @id @db.VarChar(255)
+  dosen_id        String    @db.VarChar(100)
+  tanggal         DateTime  @db.Date
+  kegiatan        String?   @db.VarChar(255)
+  jam_mulai       DateTime? @db.Time(6)
+  jam_selesai     DateTime? @db.Time(6)
+  users           users     @relation(fields: [dosen_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "fk_dosen")
 }
 
 enum jenis_bimbingan_enum {

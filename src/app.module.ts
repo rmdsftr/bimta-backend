@@ -8,6 +8,8 @@ import { ProgressModule } from './progress/progress.module.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { ProfileModule } from './profile/profil.module.js';
+import { JadwalModule } from './jadwal/jadwal.module.js';
+import { KegiatanModule } from './kegiatan/kegiatan.module.js';
 
 @Module({
   imports: [ConfigModule.forRoot({
@@ -15,7 +17,7 @@ import { ProfileModule } from './profile/profil.module.js';
     cache: true,
     envFilePath: ['.env'],
     load: [() => ({ jwt: jwtConfig})]
-  }), AuthModule, GeneralModule, BimbinganModule, ProgressModule, ProfileModule],
+  }), AuthModule, GeneralModule, BimbinganModule, ProgressModule, ProfileModule, JadwalModule, KegiatanModule],
   controllers: [AppController],
   providers: [AppService],
 })

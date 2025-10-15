@@ -16,4 +16,14 @@ export class GeneralController{
     async mahasiswa(@Param('dosen_id') dosen_id:string){
         return await this.generalService.mahasiswa(dosen_id);
     }
+
+    @Get('terkini/mahasiswa/:mahasiswa_id')
+    async terkiniMahasiswa(@Param('mahasiswa_id') mahasiswa_id:string){
+        return await this.generalService.terkiniMahasiswa(mahasiswa_id);
+    }
+
+    @Get('terkini/dosen/:dosen_id')
+    async terkiniDosen(@Param('dosen_id') dosen_id:string){
+        return await this.generalService.terkiniDosen(dosen_id);
+    }
 }
