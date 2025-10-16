@@ -10,6 +10,7 @@ import { AppService } from './app.service.js';
 import { ProfileModule } from './profile/profil.module.js';
 import { JadwalModule } from './jadwal/jadwal.module.js';
 import { KegiatanModule } from './kegiatan/kegiatan.module.js';
+import { RiwayatModule } from './riwayat/riwayat.module.js';
 
 @Module({
   imports: [ConfigModule.forRoot({
@@ -17,7 +18,7 @@ import { KegiatanModule } from './kegiatan/kegiatan.module.js';
     cache: true,
     envFilePath: ['.env'],
     load: [() => ({ jwt: jwtConfig})]
-  }), AuthModule, GeneralModule, BimbinganModule, ProgressModule, ProfileModule, JadwalModule, KegiatanModule],
+  }), AuthModule, GeneralModule, BimbinganModule, ProgressModule, ProfileModule, JadwalModule, KegiatanModule, RiwayatModule],
   controllers: [AppController],
   providers: [AppService],
 })

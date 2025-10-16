@@ -75,6 +75,7 @@ model users {
   created_at                              DateTime?        @db.Timestamp(6)
   updated_at                              DateTime?        @db.Timestamp(6)
   judul                                   String?          @db.VarChar(255)
+  judul_temp                              String?          @db.VarChar(255)
   bimbingan_bimbingan_dosen_idTousers     bimbingan[]      @relation("bimbingan_dosen_idTousers")
   bimbingan_bimbingan_mahasiswa_idTousers bimbingan[]      @relation("bimbingan_mahasiswa_idTousers")
   jadwal_dosen                            jadwal_dosen[]
@@ -112,6 +113,7 @@ enum status_jadwal_enum {
   waiting
   accepted
   declined
+  done
 }
 
 enum status_progress_enum {
