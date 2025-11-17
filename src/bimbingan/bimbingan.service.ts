@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { status_bimbingan_enum } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { AddMahasiswaBimbinganDto } from "./dto/add-mahasiswa.dto.js";
@@ -20,7 +20,8 @@ export class BimbinganService{
                         select: {
                             user_id: true,
                             nama: true,
-                            judul: true
+                            judul: true,
+                            photo_url: true
                         }
                     }
                 }
@@ -106,4 +107,75 @@ export class BimbinganService{
         }
     }
     
+    async hapusMahasiswaBimbingan(dosen_id: string, mahasiswa_id: string) {
+        try {
+            const bimbingan = await this.prisma.bimbingan.findFirst({
+                where: {
+                    dosen_id,
+                    mahasiswa_id
+                },
+                select: {
+                    bimbingan_id: true
+                }
+            });
+            
+            if (!bimbingan) {
+                throw new NotFoundException('Data bimbingan tidak ditemukan');
+            }
+            
+            const { bimbingan_id } = bimbingan;
+            
+            await this.prisma.$transaction([
+                this.prisma.progress.deleteMany({
+                    where: { bimbingan_id }
+                }),
+                this.prisma.jadwal.deleteMany({
+                    where: { bimbingan_id }
+                }),
+                this.prisma.bimbingan.delete({
+                    where: { bimbingan_id }
+                }),
+            ]);
+            
+            return true;
+        } catch (error) {
+            console.error(error);
+            if (!(error instanceof Error)) {
+                throw new InternalServerErrorException('Terjadi kesalahan pada server');
+            }
+            throw error;
+        }
+    }
+    
+    async selesaiBimbingan(mahasiswa_id: string) {
+        try {
+            const bimbinganId = await this.prisma.bimbingan.findMany({
+                where: {
+                    mahasiswa_id: mahasiswa_id
+                },
+                select: {
+                    bimbingan_id: true
+                }
+            });
+            
+            const ids = bimbinganId.map((item) => item.bimbingan_id);
+            
+            await this.prisma.bimbingan.updateMany({
+                where: {
+                    bimbingan_id: {
+                        in: ids
+                    }
+                },
+                data: {
+                    status_bimbingan: status_bimbingan_enum.done
+                }
+            });
+        } catch (error) {
+            console.error(error);
+            if (!(error instanceof Error)) {
+                throw new InternalServerErrorException('Terjadi kesalahan pada server');
+            }
+            throw error;
+        }
+    }
 }

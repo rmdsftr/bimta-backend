@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
 import { BimbinganService } from "./bimbingan.service.js";
 import { AddMahasiswaBimbinganDto } from "./dto/add-mahasiswa.dto.js";
 
@@ -26,5 +26,15 @@ export class BimbinganController{
     @Post('add')
     async AddMahasiswa(@Body() dto:AddMahasiswaBimbinganDto){
         return await this.bimbinganService.addMahasiswa(dto);
+    }
+
+    @Delete('hapus/:dosen_id/:mahasiswa_id')
+    async hapusMahasiswaBimbingan(@Param('dosen_id') dosen_id:string, @Param('mahasiswa_id') mahasiswa_id:string){
+        return await this.bimbinganService.hapusMahasiswaBimbingan(dosen_id, mahasiswa_id);
+    }
+
+    @Patch('selesai/:mahasiswa_id')
+    async selesaiBimbingan(@Param('mahasiswa_id') mahasiswa_id:string){
+        return await this.bimbinganService.selesaiBimbingan(mahasiswa_id);
     }
 }
