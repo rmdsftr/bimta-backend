@@ -1,7 +1,8 @@
-import { IsEmpty, IsString } from "class-validator";
+import { IsEmpty, IsNotEmpty, IsString } from "class-validator";
 
 export class ChangeNumberDto{
-    @IsEmpty()
+    //@IsEmpty()
+    @IsNotEmpty()
     @IsString()
     nomorBaru: string;
 }

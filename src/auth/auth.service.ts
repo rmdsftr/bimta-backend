@@ -70,7 +70,7 @@ export class AuthService{
             
             const isMatch = await bcrypt.compare(dto.sandi, user.sandi);
             if (!isMatch) {
-                throw new BadRequestException('NIM/NIP atau password tidak sesuai');
+                throw new UnauthorizedException('NIM/NIP atau password tidak sesuai');
             }
 
             const payload: jwtPayload = await this.userValidator.validateUser(dto.user_id);
