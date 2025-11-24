@@ -3,6 +3,8 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 
+// 6 PASSED //
+
 describe('Auth (e2e)', () => {
   let app: INestApplication;
   let token: string;

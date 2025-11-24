@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UseInterceptors, HttpCode } from "@nestjs/common";
 import { ProfileService } from "./profil.service";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ChangePasswordDto } from "./dto/changepassword.dto";
@@ -36,6 +36,7 @@ export class ProfileController{
     }
     
     @Post('change/:user_id')
+    @HttpCode(200)
     async changePasswordUser(@Param('user_id') user_id:string, @Body() dto:ChangePasswordDto){
         return await this.profileService.changePasswordUser(user_id, dto);
     }

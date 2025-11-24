@@ -1,15 +1,15 @@
-import { IsEmpty, IsString } from "class-validator";
+import { IsEmpty, IsString, IsNotEmpty } from "class-validator";
 
 export class ChangePasswordDto{
-    @IsEmpty()
+    @IsNotEmpty()
     @IsString()
     sandiLama: string;
 
-    @IsEmpty()
+    @IsNotEmpty()
     @IsString()
     sandiBaru: string;
 
-    @IsEmpty()
+    @IsNotEmpty()
     @IsString()
     konfirmasiSandi: string;
 }
