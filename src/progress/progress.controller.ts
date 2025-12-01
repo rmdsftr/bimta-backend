@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { ProgressService } from "./progress.service.js";
-import { addProgressOnlineDto } from "./dto/add-progress.dto.js";
+import { ProgressService } from "./progress.service";
+import { addProgressOnlineDto } from "./dto/add-progress.dto";
 
 @Controller('progress')
 export class ProgressController{
