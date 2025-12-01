@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AuthService } from '../src/auth/auth.service';
-import { PrismaService } from '../src/prisma/prisma.service';
-import { JwtTokenUtil } from '../src/utils/jwt_token';
-import { UserValidator } from '../src/validators/user.validator';
+import { AuthService } from '../../src/auth/auth.service';
+import { PrismaService } from '../../src/prisma/prisma.service';
+import { JwtTokenUtil } from '../../src/utils/jwt_token';
+import { UserValidator } from '../../src/validators/user.validator';
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
@@ -51,7 +51,12 @@ describe('AuthService', () => {
     prismaMock.users.findUnique.mockResolvedValue({ user_id: '123' });
 
     await expect(
-      service.register({ user_id: '123', nama: 'AAA', no_whatsapp: '08', role: 'student' } as any),
+      service.register({
+        user_id: '123',
+        nama: 'AAA',
+        no_whatsapp: '08',
+        role: 'student',
+      } as any),
     ).rejects.toThrow(BadRequestException);
   });
 
@@ -113,7 +118,10 @@ describe('AuthService', () => {
 
     (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-    userValidatorMock.validateUser.mockResolvedValue({ user_id: '123', role: 'student' });
+    userValidatorMock.validateUser.mockResolvedValue({
+      user_id: '123',
+      role: 'student',
+    });
     jwtMock.generateTokens.mockResolvedValue({
       access_token: 'access123',
       refresh_token: 'refresh123',
@@ -130,7 +138,9 @@ describe('AuthService', () => {
   // ------------------------------------------------------------
 
   it('should throw unauthorized if token missing', async () => {
-    await expect(service.logout('', { user_id: '123' })).rejects.toThrow(UnauthorizedException);
+    await expect(service.logout('', { user_id: '123' })).rejects.toThrow(
+      UnauthorizedException,
+    );
   });
 
   it('should logout successfully', async () => {
