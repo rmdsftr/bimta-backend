@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
-import { BimbinganService } from "./bimbingan.service.js";
-import { AddMahasiswaBimbinganDto } from "./dto/add-mahasiswa.dto.js";
+import { BimbinganService } from "./bimbingan.service";
+import { AddMahasiswaBimbinganDto } from "./dto/add-mahasiswa.dto";
 
 @Controller('bimbingan')
 export class BimbinganController{

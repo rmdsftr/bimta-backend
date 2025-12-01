@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service.js";
+import { PrismaService } from "../prisma/prisma.service";
 import { status_jadwal_enum, status_progress_enum } from "@prisma/client";
 
 @Injectable()

@@ -2,13 +2,13 @@ import { Module } from "@nestjs/common";
 import { PassportModule } from "@nestjs/passport";
 import { JwtModule } from "@nestjs/jwt";
 import { ConfigModule, ConfigService } from "@nestjs/config";
-import { AuthController } from "./auth.controller.js";
-import { AuthService } from "./auth.service.js";
-import { JwtStrategy } from "./strategy/jwt.strategy.js";
-import { JwtTokenUtil } from "../utils/jwt_token.js";
-import { UserValidator } from "../validators/user.validator.js";
-import { JwtAuthGuard } from "./guards/jwt.guard.js";
-import { PrismaModule } from "../prisma/prisma.module.js";
+import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
+import { JwtStrategy } from "./strategy/jwt.strategy";
+import { JwtTokenUtil } from "../utils/jwt_token";
+import { UserValidator } from "../validators/user.validator";
+import { JwtAuthGuard } from "./guards/jwt.guard";
+import { PrismaModule } from "../prisma/prisma.module";
 
 @Module({
     controllers: [AuthController],
