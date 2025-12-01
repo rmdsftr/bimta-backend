@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { jwtConfig } from './config/jwt.config.js';
-import { AuthModule } from './auth/auth.module.js';
-import { GeneralModule } from './general/general.module.js';
-import { BimbinganModule } from './bimbingan/bimbingan.module.js';
-import { ProgressModule } from './progress/progress.module.js';
+import { jwtConfig } from './config/jwt.config';
+import { AuthModule } from './auth/auth.module';
+import { GeneralModule } from './general/general.module';
+import { BimbinganModule } from './bimbingan/bimbingan.module';
+import { ProgressModule } from './progress/progress.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ProfileModule } from './profile/profil.module.js';
-import { JadwalModule } from './jadwal/jadwal.module.js';
-import { KegiatanModule } from './kegiatan/kegiatan.module.js';
-import { RiwayatModule } from './riwayat/riwayat.module.js';
+import { ProfileModule } from './profile/profil.module';
+import { JadwalModule } from './jadwal/jadwal.module';
+import { KegiatanModule } from './kegiatan/kegiatan.module';
+import { RiwayatModule } from './riwayat/riwayat.module';
 
 @Module({
   imports: [ConfigModule.forRoot({

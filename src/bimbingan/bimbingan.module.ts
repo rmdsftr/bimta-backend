@@ -1,8 +1,8 @@
 import { Module } from "@nestjs/common";
-import { BimbinganService } from "./bimbingan.service.js";
-import { AuthModule } from "../auth/auth.module.js";
-import { BimbinganController } from "./bimbingan.controller.js";
-import { PrismaModule } from "../prisma/prisma.module.js";
+import { BimbinganService } from "./bimbingan.service";
+import { AuthModule } from "../auth/auth.module";
+import { BimbinganController } from "./bimbingan.controller";
+import { PrismaModule } from "../prisma/prisma.module";
 
 @Module({
     providers: [BimbinganService, AuthModule],
