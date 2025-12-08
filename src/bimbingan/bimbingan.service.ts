@@ -1,7 +1,7 @@
 import { Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { status_bimbingan_enum } from "@prisma/client";
-import { PrismaService } from "../prisma/prisma.service.js";
-import { AddMahasiswaBimbinganDto } from "./dto/add-mahasiswa.dto.js";
+import { PrismaService } from "../prisma/prisma.service";
+import { AddMahasiswaBimbinganDto } from "./dto/add-mahasiswa.dto";
 
 @Injectable()
 export class BimbinganService{

@@ -1,9 +1,15 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { jenis_bimbingan_enum, status_progress_enum } from "@prisma/client";
+<<<<<<< HEAD
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SupabaseService } from "../supabase/supabase.service.js";
 import { addProgressOnlineDto } from "./dto/add-progress.dto.js";
 import { KoreksiProgressDto } from "./dto/koreksi-progress.dto.js";
+=======
+import { PrismaService } from "../prisma/prisma.service";
+import { SupabaseService } from "../supabase/supabase.service";
+import { addProgressOnlineDto } from "./dto/add-progress.dto";
+>>>>>>> 86040087ff3da4eb823517ea48ffb263e70df150
 
 @Injectable()
 export class ProgressService{

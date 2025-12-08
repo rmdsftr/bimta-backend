@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
-import { jwtPayload } from "../auth/interfaces/payload.js";
+import { jwtPayload } from "../auth/interfaces/payload";
 
 export interface TokenPair{
     access_token:string;
