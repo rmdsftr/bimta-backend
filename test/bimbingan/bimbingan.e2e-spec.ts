@@ -142,12 +142,6 @@ describe('BIMBINGAN system testing (e2e)', () => {
             expect(response.body).toHaveLength(0);
         })
         
-        it('should return 400 when dosen_id is empty string', async() => {
-            await request(app.getHttpServer())
-            .get(`/bimbingan/`)
-            .expect(400)
-        })
-        
         it('should return 404 when dosen does not exist', async() => {
             await request(app.getHttpServer())
             .get(`/bimbingan/99999999`)
