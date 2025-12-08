@@ -1,13 +1,8 @@
 import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-<<<<<<< HEAD
-import { ProgressService } from "./progress.service.js";
-import { addProgressOnlineDto } from "./dto/add-progress.dto.js";
-import { KoreksiProgressDto } from "./dto/koreksi-progress.dto.js";
-=======
 import { ProgressService } from "./progress.service";
 import { addProgressOnlineDto } from "./dto/add-progress.dto";
->>>>>>> 86040087ff3da4eb823517ea48ffb263e70df150
+import { KoreksiProgressDto } from "./dto/koreksi-progress.dto";
 
 @Controller('progress')
 export class ProgressController{
