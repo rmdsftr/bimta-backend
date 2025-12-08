@@ -1,8 +1,9 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { jenis_bimbingan_enum, status_progress_enum } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { SupabaseService } from "../supabase/supabase.service.js";
 import { addProgressOnlineDto } from "./dto/add-progress.dto.js";
+import { KoreksiProgressDto } from "./dto/koreksi-progress.dto.js";
 
 @Injectable()
 export class ProgressService{
@@ -198,4 +199,127 @@ export class ProgressService{
             throw error;
         }
     }
+
+    async markAsRead(progress_id: string) {
+        try {
+            // Cek apakah progress ada
+            const progress = await this.prisma.progress.findUnique({
+                where: { progress_id }
+            });
+
+            if (!progress) {
+                throw new NotFoundException('Progress tidak ditemukan');
+            }
+
+            // Update status menjadi read jika masih unread
+            if (progress.status_progress === 'unread') {
+                await this.prisma.progress.update({
+                    where: { progress_id },
+                    data: {
+                        status_progress: 'read'
+                    }
+                });
+
+                return {
+                    status: 'success',
+                    message: 'Status progress berhasil diubah menjadi read'
+                };
+            }
+
+            return {
+                status: 'success',
+                message: 'Status progress sudah read'
+            };
+
+        } catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new BadRequestException(`Gagal mengubah status: ${error.message}`);
+        }
+    }
+
+    async submitKoreksi(
+        progress_id: string,
+        dto: KoreksiProgressDto,
+        file?: Express.Multer.File
+    ) {
+        try {
+            // Cek apakah progress ada
+            const progress = await this.prisma.progress.findUnique({
+                where: { progress_id },
+                include: {
+                    bimbingan: {
+                        include: {
+                            users_bimbingan_mahasiswa_idTousers: true
+                        }
+                    }
+                }
+            });
+
+            if (!progress) {
+                throw new NotFoundException('Progress tidak ditemukan');
+            }
+
+            // Validasi: jika need_revision, file harus ada
+            if (dto.status_progress === 'need_revision' && !file) {
+                throw new BadRequestException('File koreksi wajib diupload untuk status revisi');
+            }
+
+            let fileKoreksiUrl = progress.file_koreksi;
+
+            // Upload file koreksi ke Supabase jika ada
+            if (file) {
+                const uploadResult = await this.supabaseService.uploadProgressFile(file, 'koreksi');
+                fileKoreksiUrl = uploadResult.publicUrl;
+            }
+
+            // Update progress dengan koreksi
+            const updatedProgress = await this.prisma.progress.update({
+                where: { progress_id },
+                data: {
+                    evaluasi_dosen: dto.evaluasi_dosen,
+                    status_progress: dto.status_progress,
+                    file_koreksi: fileKoreksiUrl,
+                    koreksi_at: new Date()
+                }
+            });
+
+            // Jika need_revision, buat progress baru sebagai revisi
+            if (dto.status_progress === 'need_revision') {
+                const timestamp = Date.now();
+                const newProgressId = `PROG-${progress.bimbingan.mahasiswa_id}-${timestamp}`;
+
+                await this.prisma.progress.create({
+                    data: {
+                        progress_id: newProgressId,
+                        bimbingan_id: progress.bimbingan_id,
+                        subject_progress: `Revisi ${progress.revisi_number + 1}: ${progress.subject_progress}`,
+                        file_progress: progress.file_progress,
+                        file_name: progress.file_name,
+                        submit_at: new Date(),
+                        status_progress: 'unread',
+                        jenis_bimbingan: 'online',
+                        revisi_number: progress.revisi_number + 1,
+                        parent_progress_id: progress_id
+                    }
+                });
+            }
+
+            return {
+                status: 'success',
+                message: dto.status_progress === 'done' 
+                    ? 'Progress berhasil disetujui' 
+                    : 'Koreksi berhasil dikirim',
+                data: updatedProgress
+            };
+
+        } catch (error) {
+            if (error instanceof NotFoundException || error instanceof BadRequestException) {
+                throw error;
+            }
+            throw new BadRequestException(`Gagal mengirim koreksi: ${error.message}`);
+        }
+    }
+
 }

@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Param, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ProgressService } from "./progress.service.js";
 import { addProgressOnlineDto } from "./dto/add-progress.dto.js";
+import { KoreksiProgressDto } from "./dto/koreksi-progress.dto.js";
 
 @Controller('progress')
 export class ProgressController{
@@ -40,5 +41,28 @@ export class ProgressController{
     @Get('pending/:dosen_id')
     async hitungPendingReview(@Param('dosen_id') dosen_id:string){
         return await this.progressService.hitungPendingReview(dosen_id);
+    }
+
+    @Patch('mark-read/:progress_id')
+    async markAsRead(@Param('progress_id') progress_id: string) {
+        return await this.progressService.markAsRead(progress_id);
+    }
+
+    @Post('koreksi/:progress_id')
+    @UseInterceptors(FileInterceptor('file', {
+        fileFilter: (req, file, cb) => {
+            if (file.mimetype !== 'application/pdf') {
+                cb(new Error('Only PDF files are allowed!'), false);
+            } else {
+                cb(null, true);
+            }
+        },
+    }))
+    async submitKoreksi(
+        @Param('progress_id') progress_id: string,
+        @Body() dto: KoreksiProgressDto,
+        @UploadedFile() file?: Express.Multer.File
+    ) {
+        return await this.progressService.submitKoreksi(progress_id, dto, file);
     }
 }
