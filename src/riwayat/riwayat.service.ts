@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { jenis_bimbingan_enum, status_jadwal_enum, status_progress_enum } from "@prisma/client";
 
@@ -10,6 +10,15 @@ export class RiwayatService{
 
     async riwayatBimbingan(mahasiswa_id:string){
         try {
+            // ✅ Cek apakah mahasiswa exist
+            const mahasiswa = await this.prisma.users.findUnique({
+                where: { user_id: mahasiswa_id }
+            });
+
+            if (!mahasiswa) {
+                throw new NotFoundException('Mahasiswa tidak ditemukan');
+            }
+
             const bimbinganId = await this.prisma.bimbingan.findFirst({
                 where: {
                     mahasiswa_id: mahasiswa_id
@@ -59,7 +68,7 @@ export class RiwayatService{
             }))
 
             const riwayatBimbingan = [...dataOffline, ...dataOnline].sort(
-            (a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime()
+                (a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime()
             );
 
             return riwayatBimbingan;

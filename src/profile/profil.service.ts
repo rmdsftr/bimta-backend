@@ -55,7 +55,7 @@ export class ProfileService{
         try {
             const photo_url = await this.supabase.uploadPhoto(file);
 
-            const change = await this.prisma.users.update({
+            await this.prisma.users.update({
                 where: {
                     user_id: user_id
                 }, data: {
@@ -63,7 +63,7 @@ export class ProfileService{
                 }
             })
 
-            return change.photo_url;
+            return { url: photo_url }; // ✅ Return object dengan property url
         } catch (error) {
             console.error(error);
             if (!(error instanceof Error)) {
@@ -75,7 +75,7 @@ export class ProfileService{
 
     async getPhotoProfile(user_id:string){
         try {
-            const photo_url = await this.prisma.users.findFirst({
+            const result = await this.prisma.users.findFirst({
                 where: {
                     user_id: user_id
                 }, select: {
@@ -83,7 +83,7 @@ export class ProfileService{
                 }
             })
 
-            return photo_url?.photo_url;
+            return { url: result?.photo_url || null }; // ✅ Return object dengan property url
         } catch (error) {
             console.error(error);
             if (!(error instanceof Error)) {

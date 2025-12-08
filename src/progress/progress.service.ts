@@ -24,7 +24,7 @@ export class ProgressService{
             });
             
             if (idBimbinganList.length === 0) {
-                throw new Error("Bimbingan tidak ditemukan untuk mahasiswa ini");
+                throw new NotFoundException("Bimbingan tidak ditemukan untuk mahasiswa ini"); // ✅ Change to NotFoundException
             }
             
             const { publicUrl, filename } = await this.supabaseService.uploadProgressFile(file);
@@ -51,6 +51,10 @@ export class ProgressService{
             return submit;
         } catch (error) {
             console.error(error);
+            // ✅ Check for HTTP exceptions first
+            if (error instanceof NotFoundException || error instanceof BadRequestException) {
+                throw error;
+            }
             if (!(error instanceof Error)) {
                 throw new InternalServerErrorException('Terjadi kesalahan pada server');
             }
@@ -70,7 +74,7 @@ export class ProgressService{
             });
             
             if (!bimbinganId) {
-                throw new Error('Bimbingan tidak ditemukan untuk mahasiswa ini');
+                throw new NotFoundException('Bimbingan tidak ditemukan untuk mahasiswa ini'); // ✅ Change to NotFoundException
             }
             
             const data = await this.prisma.progress.findMany({
@@ -107,6 +111,10 @@ export class ProgressService{
             return all;
         } catch (error) {
             console.error(error);
+            // ✅ Check for HTTP exceptions first
+            if (error instanceof NotFoundException || error instanceof BadRequestException) {
+                throw error;
+            }
             if (!(error instanceof Error)) {
                 throw new InternalServerErrorException('Terjadi kesalahan pada server');
             }
@@ -190,7 +198,7 @@ export class ProgressService{
                 }
             })
 
-            return pending;
+            return { count: pending }; // ✅ Return object instead of plain number
         } catch (error) {
             console.error(error);
             if (!(error instanceof Error)) {
@@ -202,7 +210,6 @@ export class ProgressService{
 
     async markAsRead(progress_id: string) {
         try {
-            // Cek apakah progress ada
             const progress = await this.prisma.progress.findUnique({
                 where: { progress_id }
             });
@@ -211,7 +218,6 @@ export class ProgressService{
                 throw new NotFoundException('Progress tidak ditemukan');
             }
 
-            // Update status menjadi read jika masih unread
             if (progress.status_progress === 'unread') {
                 await this.prisma.progress.update({
                     where: { progress_id },
@@ -245,7 +251,6 @@ export class ProgressService{
         file?: Express.Multer.File
     ) {
         try {
-            // Cek apakah progress ada
             const progress = await this.prisma.progress.findUnique({
                 where: { progress_id },
                 include: {
@@ -261,20 +266,17 @@ export class ProgressService{
                 throw new NotFoundException('Progress tidak ditemukan');
             }
 
-            // Validasi: jika need_revision, file harus ada
             if (dto.status_progress === 'need_revision' && !file) {
                 throw new BadRequestException('File koreksi wajib diupload untuk status revisi');
             }
 
             let fileKoreksiUrl = progress.file_koreksi;
 
-            // Upload file koreksi ke Supabase jika ada
             if (file) {
                 const uploadResult = await this.supabaseService.uploadProgressFile(file, 'koreksi');
                 fileKoreksiUrl = uploadResult.publicUrl;
             }
 
-            // Update progress dengan koreksi
             const updatedProgress = await this.prisma.progress.update({
                 where: { progress_id },
                 data: {
@@ -285,7 +287,6 @@ export class ProgressService{
                 }
             });
 
-            // Jika need_revision, buat progress baru sebagai revisi
             if (dto.status_progress === 'need_revision') {
                 const timestamp = Date.now();
                 const newProgressId = `PROG-${progress.bimbingan.mahasiswa_id}-${timestamp}`;
@@ -321,5 +322,4 @@ export class ProgressService{
             throw new BadRequestException(`Gagal mengirim koreksi: ${error.message}`);
         }
     }
-
 }

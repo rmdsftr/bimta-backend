@@ -3,12 +3,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import request from 'supertest';
+import { role_enum, status_user_enum } from "@prisma/client";
 
-describe('KEGIATAN system testing (e2e)', () => {
+describe('KEGIATAN system testing (e2e) - Super Complete', () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
-  const dosenId = 'D100';
+  const dosenId = '0909090909';
   const mahasiswaId = '2211522023';
   const bimbinganId = 'B100';
 
@@ -29,31 +30,30 @@ describe('KEGIATAN system testing (e2e)', () => {
   });
 
   beforeEach(async () => {
-    // Clear DB
+
     await prisma.progress.deleteMany();
     await prisma.jadwal.deleteMany();
     await prisma.jadwal_dosen.deleteMany();
     await prisma.bimbingan.deleteMany();
     await prisma.users.deleteMany();
 
-    // Users
     await prisma.users.createMany({
       data: [
         {
           user_id: dosenId,
-          nama: 'Saputra Test',
-          no_whatsapp: '0811111111',
-          sandi: 'hashed',
-          role: 'dosen',
-          status_user: 'active',
+          nama: 'Husnil Kamil, MT',
+          no_whatsapp: '081234567891',
+          sandi: 'hashedpassword456',
+          role: role_enum.dosen,
+          status_user: status_user_enum.active,
         },
         {
           user_id: mahasiswaId,
-          nama: 'Talitha',
+          nama: 'Mahasiswa Test',
           no_whatsapp: '0822222222',
-          sandi: 'hashed',
-          role: 'mahasiswa',
-          status_user: 'active',
+          sandi: 'hashedpassword101',
+          role: role_enum.mahasiswa,
+          status_user: status_user_enum.active,
         },
       ],
       skipDuplicates: true,
