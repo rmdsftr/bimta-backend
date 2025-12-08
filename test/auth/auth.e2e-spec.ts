@@ -38,8 +38,8 @@ describe('AUTH system testing (e2e)', () => {
   describe('POST /auth/register', () => {
     it('should register a new user successfully', async () => {
       const dto = {
-        user_id: 'U100',
-        nama: 'Test User',
+        user_id: '2211522000',
+        nama: 'Fulan Test',
         no_whatsapp: '081234567890',
         sandi: '123456',
         role: 'mahasiswa',
@@ -63,7 +63,7 @@ describe('AUTH system testing (e2e)', () => {
     it('should fail if user already exists', async () => {
       await prisma.users.create({
         data: {
-          user_id: 'U100',
+          user_id: '2211522000',
           nama: 'Existing User',
           no_whatsapp: '081234567890',
           sandi: await bcrypt.hash('123456', 12),
@@ -73,7 +73,7 @@ describe('AUTH system testing (e2e)', () => {
       });
 
       const dto = {
-        user_id: 'U100',
+        user_id: '2211522000',
         nama: 'Test User',
         no_whatsapp: '081234567890',
         sandi: '123456',
