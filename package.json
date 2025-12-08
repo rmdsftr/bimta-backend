@@ -21,6 +21,8 @@
     "test:e2e": "npm run test:bimbingan && npm run db:reset && npm run test:jadwal",
     "test:bimbingan": "jest --config ./test/jest-e2e.json --runInBand bimbingan.e2e-spec",
     "test:jadwal": "jest --config ./test/jest-e2e.json --runInBand jadwal.e2e-spec",
+    "test:auth" : "jest --config ./test/jest-e2e.json --runInBand auth.e2e-spec",
+    "test:kegiatan" : "jest --config ./test/jest-e2e.json --runInBand kegiatan.e2e-spec",
     "db:reset": "ts-node ./test/reset-db.ts"
   },
   "dependencies": {
