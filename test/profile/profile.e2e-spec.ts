@@ -30,9 +30,10 @@ describe('PROFILE system testing (e2e)', () => {
   });
 
   beforeEach(async () => {
-    await prisma.bimbingan.deleteMany({});
-    await prisma.jadwal_dosen.deleteMany({});
+    await prisma.jadwal.deleteMany({});        
     await prisma.progress.deleteMany({});
+    await prisma.jadwal_dosen.deleteMany({});
+    await prisma.bimbingan.deleteMany({});     
     await prisma.users.deleteMany();
 
     await prisma.users.createMany({

@@ -24,6 +24,9 @@
     "test:auth" : "jest --config ./test/jest-e2e.json --runInBand auth.e2e-spec",
     "test:kegiatan" : "jest --config ./test/jest-e2e.json --runInBand kegiatan.e2e-spec",
     "test:profile" : "jest --config ./test/jest-e2e.json --runInBand profile.e2e-spec",
+    "test:riwayat" : "jest --config ./test/jest-e2e.json --runInBand riwayat.e2e-spec",
+    "test:progress" : "jest --config ./test/jest-e2e.json --runInBand progress.e2e-spec",
+    "test:e2e-all": "jest --config ./test/jest-e2e.json --runInBand",
     "db:reset": "ts-node ./test/reset-db.ts"
   },
   "dependencies": {

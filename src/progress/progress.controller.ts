@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, UploadedFile, UseInterceptors, BadRequestException } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ProgressService } from "./progress.service";
 import { addProgressOnlineDto } from "./dto/add-progress.dto";
@@ -14,7 +14,8 @@ export class ProgressController{
     @UseInterceptors(FileInterceptor('file', {
         fileFilter: (req, file, cb) => {
             if (file.mimetype !== 'application/pdf') {
-                cb(new Error('Only PDF files are allowed!'), false);
+                // ✅ Ubah dari Error menjadi BadRequestException
+                cb(new BadRequestException('Only PDF files are allowed!'), false);
             } else {
                 cb(null, true);
             }
@@ -52,7 +53,8 @@ export class ProgressController{
     @UseInterceptors(FileInterceptor('file', {
         fileFilter: (req, file, cb) => {
             if (file.mimetype !== 'application/pdf') {
-                cb(new Error('Only PDF files are allowed!'), false);
+                // ✅ Ubah dari Error menjadi BadRequestException
+                cb(new BadRequestException('Only PDF files are allowed!'), false);
             } else {
                 cb(null, true);
             }
