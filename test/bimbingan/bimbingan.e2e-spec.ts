@@ -161,7 +161,7 @@ describe('BIMBINGAN system testing (e2e)', () => {
             .send(dto)
             .expect(201)
             
-            expect(response.body).toBe(true);
+            expect(response.body.success).toBe(true);
             
             const bimbingan = await prisma.bimbingan.findFirst({
                 where: {
@@ -186,7 +186,7 @@ describe('BIMBINGAN system testing (e2e)', () => {
             .send(dto)
             .expect(201)
             
-            expect(response.body).toBe(true);
+            expect(response.body.success).toBe(true);
             
             const bimbingan = await prisma.bimbingan.findMany({
                 where: { dosen_id: testDosen.user_id }
@@ -330,7 +330,7 @@ describe('BIMBINGAN system testing (e2e)', () => {
             .send(dto)
             .expect(201)
             
-            expect(response.body).toBe(true);
+            expect(response.body.success).toBe(true);
             
             const bimbingan = await prisma.bimbingan.findMany({
                 where: { dosen_id: testDosen.user_id }
@@ -397,7 +397,7 @@ describe('BIMBINGAN system testing (e2e)', () => {
             .get(`/bimbingan/jumlah/${testDosen.user_id}`)
             .expect(200)
             
-            expect(response.body).toBe(2);
+            expect(Number(response.text)).toBe(2);
         })
         
         it('should exclude done status from count', async() => {
@@ -418,7 +418,7 @@ describe('BIMBINGAN system testing (e2e)', () => {
             .get(`/bimbingan/jumlah/${testDosen.user_id}`)
             .expect(200)
             
-            expect(response.body).toBe(1);
+            expect(Number(response.text)).toBe(1);
         })
         
         it('should return 0 when dosen has no mahasiswa', async() => {
@@ -426,7 +426,7 @@ describe('BIMBINGAN system testing (e2e)', () => {
             .get(`/bimbingan/jumlah/${testDosen.user_id}`)
             .expect(200)
             
-            expect(response.body).toBe(0);
+            expect(Number(response.text)).toBe(0);
         })
         
         
@@ -453,7 +453,7 @@ describe('BIMBINGAN system testing (e2e)', () => {
             .delete(`/bimbingan/hapus/${testDosen.user_id}/${testMahasiswa.user_id}`)
             .expect(200)
             
-            expect(response.body).toBe(true);
+            expect(response.body.success).toBe(true);
             
             const bimbingan = await prisma.bimbingan.findFirst({
                 where: {
@@ -503,7 +503,7 @@ describe('BIMBINGAN system testing (e2e)', () => {
             .delete(`/bimbingan/hapus/${testDosen.user_id}/${testMahasiswa.user_id}`)
             .expect(200)
             
-            expect(response.body).toBe(true);
+            expect(response.body.success).toBe(true);
             
             const [bimbingan, progress, jadwal] = await Promise.all([
                 prisma.bimbingan.findFirst({
@@ -565,7 +565,7 @@ describe('BIMBINGAN system testing (e2e)', () => {
             .patch(`/bimbingan/selesai/${testMahasiswa.user_id}`)
             .expect(200)
             
-            expect(response.body).toBe(true);
+            expect(response.body.success).toBe(true);
             
             const bimbingan = await prisma.bimbingan.findFirst({
                 where: {
@@ -594,7 +594,7 @@ describe('BIMBINGAN system testing (e2e)', () => {
             .patch(`/bimbingan/selesai/${testMahasiswa.user_id}`)
             .expect(200)
             
-            expect(response.body).toBe(true);
+            expect(response.body.success).toBe(true);
             
             const bimbingan = await prisma.bimbingan.findMany({
                 where: { mahasiswa_id: testMahasiswa.user_id }

@@ -3,7 +3,8 @@ import {
     InternalServerErrorException, 
     NotFoundException,
     BadRequestException,
-    ConflictException 
+    ConflictException, 
+    HttpException
 } from "@nestjs/common";
 import { status_bimbingan_enum } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
@@ -162,14 +163,10 @@ export class BimbinganService {
                 skipDuplicates: true,
             });
             
-            return true;
+            return { success: true };
         } catch (error) {
             console.error(error);
-            if (
-                error instanceof NotFoundException || 
-                error instanceof BadRequestException ||
-                error instanceof ConflictException
-            ) {
+            if (error instanceof HttpException) {
                 throw error;
             }
             throw new InternalServerErrorException('Terjadi kesalahan pada server');
@@ -346,7 +343,7 @@ export class BimbinganService {
                 });
             }
             
-            return true;
+            return { success : true}
         } catch (error) {
             console.error(error);
             if (
@@ -414,7 +411,7 @@ export class BimbinganService {
                 }
             });
 
-            return true;
+            return { success: true };
         } catch (error) {
             console.error(error);
             if (error instanceof NotFoundException || error instanceof BadRequestException) {

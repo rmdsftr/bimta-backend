@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from "class-validator";
+import { IsArray, IsNotEmpty, IsString } from "class-validator";
 
 export class AddMahasiswaBimbinganDto{
     @IsNotEmpty()
@@ -6,6 +6,7 @@ export class AddMahasiswaBimbinganDto{
     dosen_id: string;
 
     @IsNotEmpty()
-    @IsString()
-    mahasiswa_id:string[];
+    @IsArray() 
+    @IsString({ each: true }) 
+    mahasiswa_id: string[];
 }
