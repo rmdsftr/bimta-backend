@@ -2,8 +2,45 @@ import { INestApplication, ValidationPipe } from "@nestjs/common"
 import { Test, TestingModule } from "@nestjs/testing";
 import { AppModule } from "../../src/app.module";
 import { PrismaService } from "../../src/prisma/prisma.service";
-import { SetupTestDB, teardownTestDB } from "../setup-e2e";
 import request from "supertest";
+import { role_enum, status_bimbingan_enum, status_user_enum } from "@prisma/client";
+
+const testMahasiswa = {
+    user_id: '2211522023', 
+    nama: 'talita zulfa amira',
+    no_whatsapp: '081234567890',
+    sandi: 'hashedpassword123', 
+    role: role_enum.mahasiswa,
+    judul : 'Judul TA mahasiswa 1',
+    status_user: status_user_enum.active,
+}
+
+const testMahasiswaNoDospem = {
+    user_id: '2211522009', 
+    nama: 'ramadhani safitri',
+    no_whatsapp: '081234567890',
+    sandi: 'hashedpassword123', 
+    role: role_enum.mahasiswa,
+    judul : 'Judul TA mahasiswa 2',
+    status_user: status_user_enum.active,
+}
+
+const testDosen = {
+    user_id: '0909090909', 
+    nama: 'husnil kamil, MT',
+    no_whatsapp: '081234567891',
+    sandi: 'hashedpassword456',
+    role: role_enum.dosen,
+    status_user: status_user_enum.active,
+}
+
+const testBimbingan = {
+    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
+    dosen_id: testDosen.user_id,
+    mahasiswa_id: testMahasiswa.user_id,
+    status_bimbingan: status_bimbingan_enum.ongoing,
+    total_bimbingan: 0
+}
 
 describe('JADWAL system testing (e2e)', () => {
     let app: INestApplication;
@@ -18,22 +55,30 @@ describe('JADWAL system testing (e2e)', () => {
         app.useGlobalPipes(new ValidationPipe());
 
         prisma = app.get<PrismaService>(PrismaService);
-
         await app.init();
-        await SetupTestDB();
     })
 
     afterAll(async() =>{
-        await teardownTestDB();
+        await prisma.$disconnect()
         await app.close();
     })
 
     beforeEach(async () => {
-        await prisma.jadwal.deleteMany();
+        await prisma.jadwal.deleteMany({});
+        await prisma.bimbingan.deleteMany({});
+        await prisma.users.deleteMany({});
+
+        await prisma.users.createMany({
+            data: [testMahasiswa, testMahasiswaNoDospem, testDosen]
+        })
+
+        await prisma.bimbingan.create({
+            data: testBimbingan
+        })
     })
 
     describe('POST /jadwal/add/:mahasiswa_id', () => {
-        it('should successfully add jadwal with valid data', async () => {
+        it('return berhasil menambahkan jadwal dengan data yang valid', async () => {
             const dto = {
                 judul: 'Bimbingan Skripsi Bab 1',
                 tanggal: '2025-01-15',
@@ -44,7 +89,7 @@ describe('JADWAL system testing (e2e)', () => {
 
             
             const response = await request(app.getHttpServer())
-                .post('/jadwal/add/2211522023')  
+                .post(`/jadwal/add/${testMahasiswa.user_id}`)  
                 .send(dto)
                 .expect(201);
 
@@ -62,7 +107,7 @@ describe('JADWAL system testing (e2e)', () => {
             }
         });
 
-        it('should return 400 when required fields missing', async () => {
+        it('return 400 kalau data yang dikirim tidak lengkap', async () => {
             const invalidDto = {
                 judul: 'Test',
                 
@@ -70,23 +115,12 @@ describe('JADWAL system testing (e2e)', () => {
             };
 
             await request(app.getHttpServer())
-                .post('/jadwal/add/2211522023')  
+                .post(`/jadwal/add/${testMahasiswa.user_id}`)  
                 .send(invalidDto)
                 .expect(400);
         });
 
-        it('should return 404 when mahasiswa has no bimbingan', async () => {
-            await prisma.users.create({
-                data: { 
-                    user_id: 'M999', 
-                    nama: 'Mahasiswa Tanpa Bimbingan',
-                    no_whatsapp: '081999999999',
-                    sandi: 'hashedpassword',
-                    role: 'mahasiswa',
-                    status_user: 'active',
-                },
-            });
-
+        it('return 404 kalau mahasiswa tidak punya dospem', async () => {
             const dto = {
                 judul: 'Test',
                 tanggal: '2025-01-15',
@@ -96,7 +130,7 @@ describe('JADWAL system testing (e2e)', () => {
             };
 
             await request(app.getHttpServer())
-                .post('/jadwal/add/M999')  
+                .post(`/jadwal/add/${testMahasiswaNoDospem.user_id}`)  
                 .send(dto)
                 .expect(404);
         });
@@ -106,7 +140,7 @@ describe('JADWAL system testing (e2e)', () => {
         beforeEach(async () => {
             await prisma.jadwal.create({
                 data: {
-                    bimbingan_id: 'B1',
+                    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
                     judul_pertemuan: 'Bimbingan 1',
                     datetime: new Date('2025-01-15T10:00:00'),
                     lokasi: 'Ruang A',
@@ -116,9 +150,9 @@ describe('JADWAL system testing (e2e)', () => {
             });
         });
 
-        it('should return list of jadwal for mahasiswa', async () => {
+        it('return list jadwal mahasiswa', async () => {
             const response = await request(app.getHttpServer())
-                .get('/jadwal/view/2211522023')  
+                .get(`/jadwal/view/${testMahasiswa.user_id}`)  
                 .expect(200);
 
             expect(Array.isArray(response.body)).toBe(true);
@@ -128,9 +162,9 @@ describe('JADWAL system testing (e2e)', () => {
             expect(response.body[0]).toHaveProperty('status');
         });
 
-        it('should return 404 when mahasiswa has no bimbingan', async () => {
+        it('return 404 kalau mahasiswa tidak memiliki dospem', async () => {
             await request(app.getHttpServer())
-                .get('/jadwal/view/M999')  
+                .get(`/jadwal/view/${testMahasiswaNoDospem.user_id}`)  
                 .expect(404);
         });
     });
@@ -139,7 +173,7 @@ describe('JADWAL system testing (e2e)', () => {
         beforeEach(async () => {
             await prisma.jadwal.create({
                 data: {
-                    bimbingan_id: 'B1',
+                    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
                     judul_pertemuan: 'Bimbingan Dosen',
                     datetime: new Date('2025-01-20T14:00:00'),
                     lokasi: 'Ruang Dosen',
@@ -149,9 +183,9 @@ describe('JADWAL system testing (e2e)', () => {
             });
         });
 
-        it('should return list of jadwal for dosen', async () => {
+        it('return list jadwal untuk dosen', async () => {
             const response = await request(app.getHttpServer())
-                .get('/jadwal/dosen/0909090909')  
+                .get(`/jadwal/dosen/${testDosen.user_id}`)  
                 .expect(200);
 
             expect(Array.isArray(response.body)).toBe(true);
@@ -168,7 +202,7 @@ describe('JADWAL system testing (e2e)', () => {
         beforeEach(async () => {
             const jadwal = await prisma.jadwal.create({
                 data: {
-                    bimbingan_id: 'B1',
+                    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
                     judul_pertemuan: 'To Be Accepted',
                     datetime: new Date('2025-01-25T09:00:00'),
                     lokasi: 'Ruang Test',
@@ -180,13 +214,13 @@ describe('JADWAL system testing (e2e)', () => {
             jadwalDatetime = jadwal.datetime.toISOString();
         });
 
-        it('should accept jadwal successfully', async () => {
+        it('kalau jadwal accepted berhasil', async () => {
             const updateDto = {
                 note_dosen: 'Jadwal disetujui, silakan datang tepat waktu',
             };
 
             const response = await request(app.getHttpServer())
-                .patch(`/jadwal/terima/B1/${encodeURIComponent(jadwalDatetime)}`)  
+                .patch(`/jadwal/terima/${testDosen.user_id}-${testMahasiswa.user_id}/${encodeURIComponent(jadwalDatetime)}`)  
                 .send(updateDto)
                 .expect(200);
 
@@ -195,7 +229,7 @@ describe('JADWAL system testing (e2e)', () => {
 
             const updatedJadwal = await prisma.jadwal.findFirst({
                 where: {
-                    bimbingan_id: 'B1',
+                    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
                     datetime: new Date(jadwalDatetime),
                 },
             });
@@ -214,7 +248,7 @@ describe('JADWAL system testing (e2e)', () => {
         beforeEach(async () => {
             const jadwal = await prisma.jadwal.create({
                 data: {
-                    bimbingan_id: 'B1',
+                    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
                     judul_pertemuan: 'To Be Declined',
                     datetime: new Date('2025-01-26T11:00:00'),
                     lokasi: 'Ruang Test',
@@ -226,13 +260,13 @@ describe('JADWAL system testing (e2e)', () => {
             jadwalDatetime = jadwal.datetime.toISOString();
         });
 
-        it('should decline jadwal with reason', async () => {
+        it('kalau jadwal declined dengan alasan', async () => {
             const updateDto = {
                 note_dosen: 'Maaf, jadwal bentrok dengan rapat fakultas',
             };
 
             const response = await request(app.getHttpServer())
-                .patch(`/jadwal/tolak/B1/${encodeURIComponent(jadwalDatetime)}`)  
+                .patch(`/jadwal/tolak/${testDosen.user_id}-${testMahasiswa.user_id}/${encodeURIComponent(jadwalDatetime)}`)  
                 .send(updateDto)
                 .expect(200);
 
@@ -241,7 +275,7 @@ describe('JADWAL system testing (e2e)', () => {
 
             const updatedJadwal = await prisma.jadwal.findFirst({
                 where: {
-                    bimbingan_id: 'B1',
+                    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
                     datetime: new Date(jadwalDatetime),
                 },
             });
@@ -260,7 +294,7 @@ describe('JADWAL system testing (e2e)', () => {
         beforeEach(async () => {
             const jadwal = await prisma.jadwal.create({
                 data: {
-                    bimbingan_id: 'B1',
+                    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
                     judul_pertemuan: 'To Be Cancelled',
                     datetime: new Date('2025-01-27T13:00:00'),
                     lokasi: 'Ruang Test',
@@ -272,13 +306,13 @@ describe('JADWAL system testing (e2e)', () => {
             jadwalDatetime = jadwal.datetime.toISOString();
         });
 
-        it('should allow mahasiswa to cancel jadwal', async () => {
+        it('bimbingan dibatalkan', async () => {
             const updateDto = {
                 note_dosen: 'Dibatalkan oleh mahasiswa',
             };
 
             const response = await request(app.getHttpServer())
-                .patch(`/jadwal/cancel/B1/${encodeURIComponent(jadwalDatetime)}`)
+                .patch(`/jadwal/cancel/${testDosen.user_id}-${testMahasiswa.user_id}/${encodeURIComponent(jadwalDatetime)}`)
                 .send(updateDto)
                 .expect(200);
 
@@ -287,7 +321,7 @@ describe('JADWAL system testing (e2e)', () => {
 
             const cancelled = await prisma.jadwal.findFirst({
                 where: {
-                    bimbingan_id: 'B1',
+                    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
                     datetime: new Date(jadwalDatetime),
                 },
             });
@@ -305,7 +339,7 @@ describe('JADWAL system testing (e2e)', () => {
         beforeEach(async () => {
             const jadwal = await prisma.jadwal.create({
                 data: {
-                    bimbingan_id: 'B1',
+                    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
                     judul_pertemuan: 'Completed Meeting',
                     datetime: new Date('2025-01-28T15:00:00'),
                     lokasi: 'Ruang Test',
@@ -317,13 +351,13 @@ describe('JADWAL system testing (e2e)', () => {
             jadwalDatetime = jadwal.datetime.toISOString();
         });
 
-        it('should mark jadwal as done', async () => {
+        it('status jadwal selesai/done', async () => {
             const updateDto = {
                 note_dosen: 'Bimbingan selesai, lanjutkan ke bab 2',
             };
 
             const response = await request(app.getHttpServer())
-                .patch(`/jadwal/done/B1/${encodeURIComponent(jadwalDatetime)}`)
+                .patch(`/jadwal/done/${testDosen.user_id}-${testMahasiswa.user_id}/${encodeURIComponent(jadwalDatetime)}`)
                 .send(updateDto)
                 .expect(200);
 
@@ -332,7 +366,7 @@ describe('JADWAL system testing (e2e)', () => {
 
             const completed = await prisma.jadwal.findFirst({
                 where: {
-                    bimbingan_id: 'B1',
+                    bimbingan_id: `${testDosen.user_id}-${testMahasiswa.user_id}`,
                     datetime: new Date(jadwalDatetime),
                 },
             });
@@ -350,7 +384,7 @@ describe('JADWAL system testing (e2e)', () => {
         it('should handle complete jadwal lifecycle', async () => {
             
             const addResponse = await request(app.getHttpServer())
-                .post('/jadwal/add/2211522023')
+                .post(`/jadwal/add/${testMahasiswa.user_id}`)
                 .send({
                     judul: 'End-to-End Test Bimbingan',
                     tanggal: '2025-02-01',
@@ -364,7 +398,7 @@ describe('JADWAL system testing (e2e)', () => {
 
             
             const viewResponse = await request(app.getHttpServer())
-                .get('/jadwal/view/2211522023')
+                .get(`/jadwal/view/${testMahasiswa.user_id}`)
                 .expect(200);
 
             expect(viewResponse.body.length).toBeGreaterThan(0);
@@ -373,7 +407,7 @@ describe('JADWAL system testing (e2e)', () => {
 
             
             const dosenViewResponse = await request(app.getHttpServer())
-                .get('/jadwal/dosen/0909090909')
+                .get(`/jadwal/dosen/${testDosen.user_id}`)
                 .expect(200);
 
             expect(dosenViewResponse.body.length).toBeGreaterThan(0);
@@ -385,7 +419,7 @@ describe('JADWAL system testing (e2e)', () => {
 
             if (jadwalFromDB) {
                 await request(app.getHttpServer())
-                    .patch(`/jadwal/terima/B1/${encodeURIComponent(jadwalFromDB.datetime.toISOString())}`)
+                    .patch(`/jadwal/terima/${testDosen.user_id}-${testMahasiswa.user_id}/${encodeURIComponent(jadwalFromDB.datetime.toISOString())}`)
                     .send({ note_dosen: 'Disetujui untuk e2e test' })
                     .expect(200);
 
