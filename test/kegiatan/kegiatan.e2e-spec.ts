@@ -4,12 +4,12 @@ import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import request from 'supertest';
 
-describe('KEGIATAN system testing (e2e) - Super Complete', () => {
+describe('KEGIATAN system testing (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
 
   const dosenId = 'D100';
-  const mahasiswaId = 'M100';
+  const mahasiswaId = '2211522023';
   const bimbinganId = 'B100';
 
   beforeAll(async () => {
@@ -41,7 +41,7 @@ describe('KEGIATAN system testing (e2e) - Super Complete', () => {
       data: [
         {
           user_id: dosenId,
-          nama: 'Dosen Test',
+          nama: 'Saputra Test',
           no_whatsapp: '0811111111',
           sandi: 'hashed',
           role: 'dosen',
@@ -49,7 +49,7 @@ describe('KEGIATAN system testing (e2e) - Super Complete', () => {
         },
         {
           user_id: mahasiswaId,
-          nama: 'Mahasiswa Test',
+          nama: 'Talitha',
           no_whatsapp: '0822222222',
           sandi: 'hashed',
           role: 'mahasiswa',
