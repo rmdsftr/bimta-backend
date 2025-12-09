@@ -7,8 +7,10 @@ describe('RiwayatService', () => {
   let service: RiwayatService;
   let prisma: PrismaService;
 
-  // 👉 Pakai any supaya TS tidak protes
   const prismaMock: any = {
+    users: {
+      findUnique: jest.fn(),
+    },
     bimbingan: {
       findFirst: jest.fn(),
     },
@@ -35,9 +37,22 @@ describe('RiwayatService', () => {
     prisma = module.get<PrismaService>(PrismaService);
 
     jest.clearAllMocks();
+    
+    
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it('should return merged and sorted riwayat bimbingan', async () => {
+    
+    (prisma.users.findUnique as jest.Mock).mockResolvedValue({
+      user_id: 'MHS1',
+      nama: 'Test Mahasiswa'
+    });
+
     (prisma.bimbingan.findFirst as jest.Mock).mockResolvedValue({
       bimbingan_id: 'BIMB1',
     });
@@ -70,6 +85,12 @@ describe('RiwayatService', () => {
   });
 
   it('should return empty array if no bimbingan found', async () => {
+    
+    (prisma.users.findUnique as jest.Mock).mockResolvedValue({
+      user_id: 'MHS-NO',
+      nama: 'Test Mahasiswa'
+    });
+
     (prisma.bimbingan.findFirst as jest.Mock).mockResolvedValue(null);
     (prisma.jadwal.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.progress.findMany as jest.Mock).mockResolvedValue([]);
@@ -79,7 +100,7 @@ describe('RiwayatService', () => {
   });
 
   it('should throw error when prisma throws', async () => {
-    (prisma.bimbingan.findFirst as jest.Mock).mockRejectedValue(new Error('DB Error'));
+    (prisma.users.findUnique as jest.Mock).mockRejectedValue(new Error('DB Error'));
 
     await expect(service.riwayatBimbingan('X')).rejects.toThrow('DB Error');
   });

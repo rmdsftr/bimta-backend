@@ -57,28 +57,28 @@ describe('ProfileService (Mocked)', () => {
     });
   });
 
-  // ---------------------------------------------------------
+  
   describe('changePhoto', () => {
     it('should upload file and update photo_url', async () => {
       supabase.uploadPhoto = jest.fn().mockResolvedValue('photo.jpg');
       prisma.users.update = jest.fn().mockResolvedValue({ photo_url: 'photo.jpg' });
 
       const result = await service.changePhoto({} as any, '123');
-      expect(result).toBe('photo.jpg');
+      expect(result).toEqual({ url: 'photo.jpg' });
     });
   });
 
-  // ---------------------------------------------------------
+  
   describe('getPhotoProfile', () => {
     it('should return photo_url', async () => {
       prisma.users.findFirst = jest.fn().mockResolvedValue({ photo_url: 'abc.png' });
       const result = await service.getPhotoProfile('1');
 
-      expect(result).toBe('abc.png');
+      expect(result).toEqual({ url: 'abc.png' });
     });
   });
 
-  // ---------------------------------------------------------
+  
   describe('changePasswordUser', () => {
     it('should throw error if old password mismatch', async () => {
       prisma.users.findFirst = jest.fn().mockResolvedValue({ sandi: await bcrypt.hash('old', 10) });
@@ -99,7 +99,7 @@ describe('ProfileService (Mocked)', () => {
     });
   });
 
-  // ---------------------------------------------------------
+  
   describe('changenNumberUser', () => {
     it('should update phone number', async () => {
       prisma.users.update = jest.fn().mockResolvedValue(true);
@@ -109,7 +109,7 @@ describe('ProfileService (Mocked)', () => {
     });
   });
 
-  // ---------------------------------------------------------
+  
   describe('getInfoMahasiswa', () => {
     it('should return info object', async () => {
       prisma.users.findFirst = jest.fn().mockResolvedValue({
@@ -122,7 +122,7 @@ describe('ProfileService (Mocked)', () => {
     });
   });
 
-  // ---------------------------------------------------------
+  
   describe('gantiJudul', () => {
     it('should update temp title', async () => {
       prisma.users.update = jest.fn().mockResolvedValue(true);
@@ -132,7 +132,7 @@ describe('ProfileService (Mocked)', () => {
     });
   });
 
-  // ---------------------------------------------------------
+  
   describe('accGantiJudul', () => {
     it('should accept title change and clear temp', async () => {
       prisma.users.findFirst = jest.fn().mockResolvedValue({
@@ -147,7 +147,7 @@ describe('ProfileService (Mocked)', () => {
     });
   });
 
-  // ---------------------------------------------------------
+  
   describe('rejectGantiJudul', () => {
     it('should clear judul_temp', async () => {
       prisma.users.update = jest.fn().mockResolvedValue(true);
