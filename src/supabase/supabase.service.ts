@@ -4,6 +4,9 @@ import path from "path";
 
 @Injectable()
 export class SupabaseService{
+    downloadFile(arg0: string, arg1: string) {
+        throw new Error('Method not implemented.');
+    }
     private supabase: SupabaseClient;
     
     constructor(){
