@@ -2,6 +2,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
+import { SupabaseService } from '../../src/supabase/supabase.service';
 import request from 'supertest';
 import { role_enum, status_user_enum, status_progress_enum } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
@@ -15,11 +16,21 @@ describe('PROGRESS system testing (e2e)', () => {
   const bimbinganId = 'B100';
   const progressId = 'PROG100';
   const hashedPassword = bcrypt.hashSync('password123', 12);
+  const mockSupabaseService = {
+  uploadProgressFile: jest.fn().mockResolvedValue({
+    publicUrl: 'https://mock-supabase-url.com/progress-files/test-file.pdf',
+    fileName: 'test-file.pdf',
+  }),
+  uploadPhoto: jest.fn().mockResolvedValue('https://mock-supabase-url.com/photos/test-photo.png'),
+};
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+    .overrideProvider(SupabaseService)
+    .useValue(mockSupabaseService)
+    .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -33,7 +44,7 @@ describe('PROGRESS system testing (e2e)', () => {
   });
 
   beforeEach(async () => {
-    // Clean up in correct order (respect foreign key constraints)
+    jest.clearAllMocks();
     await prisma.progress.deleteMany({});
     await prisma.jadwal.deleteMany({});
     await prisma.jadwal_dosen.deleteMany({});
@@ -91,6 +102,12 @@ describe('PROGRESS system testing (e2e)', () => {
 
       expect(res.body).toHaveProperty('count');
       expect(res.body.count).toBeGreaterThan(0);
+      expect(mockSupabaseService.uploadProgressFile).toHaveBeenCalled();
+      
+      const progress = await prisma.progress.findFirst({
+    where: { bimbingan_id: bimbinganId },
+  });
+  expect(progress).toBeDefined();
     });
 
     it('should fail if mahasiswa has no bimbingan', async () => {
@@ -410,6 +427,7 @@ it('should fail if file is not PDF', async () => {
 
       expect(res.body).toHaveProperty('status', 'success');
       expect(res.body.message).toContain('Koreksi berhasil');
+      expect(mockSupabaseService.uploadProgressFile).toHaveBeenCalled();
 
       const updated = await prisma.progress.findUnique({
         where: { progress_id: progressId },

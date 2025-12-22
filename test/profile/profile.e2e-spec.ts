@@ -3,20 +3,30 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from '../../src/app.module';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import request from 'supertest';
+import { SupabaseService } from '../../src/supabase/supabase.service';
 import * as bcrypt from 'bcrypt';
 
 describe('PROFILE system testing (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
+  let supabaseService: SupabaseService;
 
   const mahasiswaId = 'M100';
   const userId = 'U100';
   const hashedPassword = bcrypt.hashSync('password123', 12);
+  const mockSupabaseService = {
+  uploadPhoto: jest.fn().mockResolvedValue('https://mock-url.com/photo.png'),
+};
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+    .overrideProvider(SupabaseService)
+    .useValue({
+      uploadPhoto: jest.fn().mockResolvedValue('https://fake-url.com/photo.png'),
+    })
+    .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -82,6 +92,12 @@ describe('PROFILE system testing (e2e)', () => {
 
   describe('PATCH /profil/change/:user_id', () => {
     it('should upload new photo', async () => {
+
+      const pngBuffer = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    'base64'
+  );
+
       const res = await request(app.getHttpServer())
         .patch(`/profil/change/${userId}`)
         .attach('file', Buffer.from('fake image content'), 'photo.png')
