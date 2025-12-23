@@ -13,21 +13,30 @@ jest.mock('bcrypt');
 
 describe('ProfileService - Complete Coverage', () => {
   let service: ProfileService;
-  let prisma: PrismaService;
-  let supabase: SupabaseService;
+  let prisma: any;
+  let supabase: any;
 
-  const mockPrismaService = {
-    users: {
-      findFirst: jest.fn(),
-      update: jest.fn(),
-    },
-  };
-
-  const mockSupabaseService = {
-    uploadPhoto: jest.fn(),
-  };
+  // FIXED: Declare mock outside to be accessible
+  let mockPrismaService: any;
+  let mockSupabaseService: any;
 
   beforeEach(async () => {
+    // FIXED: Initialize mock inside beforeEach
+    mockPrismaService = {
+      users: {
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      },
+      bimbingan: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+      },
+    };
+
+    mockSupabaseService = {
+      uploadPhoto: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProfileService,
@@ -43,8 +52,8 @@ describe('ProfileService - Complete Coverage', () => {
     }).compile();
 
     service = module.get<ProfileService>(ProfileService);
-    prisma = module.get<PrismaService>(PrismaService);
-    supabase = module.get<SupabaseService>(SupabaseService);
+    prisma = mockPrismaService; // FIXED: Assign directly
+    supabase = mockSupabaseService; // FIXED: Assign directly
 
     // Mock console to avoid cluttering test output
     jest.spyOn(console, 'error').mockImplementation();
@@ -109,7 +118,6 @@ describe('ProfileService - Complete Coverage', () => {
       expect(result.photo_url).toBeNull();
     });
 
-    // LINE 12: Test non-Error exception
     it('should throw InternalServerErrorException for non-Error exceptions', async () => {
       mockPrismaService.users.findFirst.mockRejectedValue('String error');
 
@@ -153,8 +161,8 @@ describe('ProfileService - Complete Coverage', () => {
       const result = await service.changePhoto(mockFile, userId);
 
       expect(result).toEqual({ url: photoUrl });
-      expect(supabase.uploadPhoto).toHaveBeenCalledWith(mockFile);
-      expect(prisma.users.update).toHaveBeenCalledWith({
+      expect(mockSupabaseService.uploadPhoto).toHaveBeenCalledWith(mockFile);
+      expect(mockPrismaService.users.update).toHaveBeenCalledWith({
         where: { user_id: userId },
         data: { photo_url: photoUrl },
       });
@@ -168,7 +176,7 @@ describe('ProfileService - Complete Coverage', () => {
       await expect(service.changePhoto(mockFile, userId)).rejects.toThrow(
         'Upload failed',
       );
-      expect(prisma.users.update).not.toHaveBeenCalled();
+      expect(mockPrismaService.users.update).not.toHaveBeenCalled();
     });
 
     it('should throw InternalServerErrorException for non-Error exceptions', async () => {
@@ -284,7 +292,7 @@ describe('ProfileService - Complete Coverage', () => {
       await expect(service.changePasswordUser(userId, dto)).rejects.toThrow(
         'Sandi lama tidak cocok',
       );
-      expect(prisma.users.update).not.toHaveBeenCalled();
+      expect(mockPrismaService.users.update).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if new passwords do not match', async () => {
@@ -337,7 +345,7 @@ describe('ProfileService - Complete Coverage', () => {
       const result = await service.changenNumberUser(userId, dto);
 
       expect(result).toEqual({ message: 'Nomor whatsapp berhasil diubah' });
-      expect(prisma.users.update).toHaveBeenCalledWith({
+      expect(mockPrismaService.users.update).toHaveBeenCalledWith({
         where: { user_id: userId },
         data: { no_whatsapp: '081234567890' },
       });
@@ -404,6 +412,9 @@ describe('ProfileService - Complete Coverage', () => {
     });
   });
 
+  // ===============================================================
+  // TEST: gantiJudul() - FIXED
+  // ===============================================================
   describe('gantiJudul', () => {
     const mahasiswaId = 'M001';
     const dto = {
@@ -411,17 +422,54 @@ describe('ProfileService - Complete Coverage', () => {
     };
 
     it('should successfully update judul_temp', async () => {
-      mockPrismaService.users.update.mockResolvedValue({});
+      // FIXED: Mock bimbingan.findFirst terlebih dahulu
+      const mockBimbingan = {
+        bimbingan_id: 'BIM123',
+        mahasiswa_id: mahasiswaId,
+        dosen_id: 'DOS123',
+      };
 
-      await service.gantiJudul(mahasiswaId, dto);
+      mockPrismaService.bimbingan.findFirst.mockResolvedValue(mockBimbingan);
+      mockPrismaService.users.update.mockResolvedValue({
+        user_id: mahasiswaId,
+        judul_temp: dto.judulBaru,
+      });
 
-      expect(prisma.users.update).toHaveBeenCalledWith({
+      const result = await service.gantiJudul(mahasiswaId, dto);
+
+      expect(result).toEqual({
+        message: 'Pengajuan ganti judul berhasil. Menunggu persetujuan dosen pembimbing',
+      });
+
+      expect(mockPrismaService.bimbingan.findFirst).toHaveBeenCalledWith({
+        where: { mahasiswa_id: mahasiswaId },
+      });
+
+      expect(mockPrismaService.users.update).toHaveBeenCalledWith({
         where: { user_id: mahasiswaId },
         data: { judul_temp: 'Penelitian Machine Learning' },
       });
     });
 
+    it('should throw BadRequestException when no bimbingan found', async () => {
+      // FIXED: Mock bimbingan tidak ditemukan
+      mockPrismaService.bimbingan.findFirst.mockResolvedValue(null);
+
+      await expect(service.gantiJudul(mahasiswaId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      await expect(service.gantiJudul(mahasiswaId, dto)).rejects.toThrow(
+        'Tidak dapat mengajukan ganti judul. Anda belum memiliki dosen pembimbing',
+      );
+    });
+
     it('should throw InternalServerErrorException for non-Error exceptions', async () => {
+      // FIXED: Mock bimbingan berhasil dulu
+      mockPrismaService.bimbingan.findFirst.mockResolvedValue({
+        bimbingan_id: 'BIM123',
+      });
+      // Kemudian mock update gagal dengan non-Error
       mockPrismaService.users.update.mockRejectedValue(undefined);
 
       await expect(service.gantiJudul(mahasiswaId, dto)).rejects.toThrow(
@@ -430,8 +478,13 @@ describe('ProfileService - Complete Coverage', () => {
     });
 
     it('should rethrow Error instances', async () => {
+      // FIXED: Mock bimbingan berhasil dulu
+      mockPrismaService.bimbingan.findFirst.mockResolvedValue({
+        bimbingan_id: 'BIM123',
+      });
+      // Kemudian mock update gagal dengan Error
       mockPrismaService.users.update.mockRejectedValue(
-        new BadRequestException('Invalid data'),
+        new Error('Invalid data'),
       );
 
       await expect(service.gantiJudul(mahasiswaId, dto)).rejects.toThrow(
@@ -453,7 +506,7 @@ describe('ProfileService - Complete Coverage', () => {
       const result = await service.accGantiJudul(mahasiswaId);
 
       expect(result).toBe(true);
-      expect(prisma.users.update).toHaveBeenCalledWith({
+      expect(mockPrismaService.users.update).toHaveBeenCalledWith({
         where: { user_id: mahasiswaId },
         data: {
           judul: 'New Title',
@@ -472,7 +525,7 @@ describe('ProfileService - Complete Coverage', () => {
       const result = await service.accGantiJudul(mahasiswaId);
 
       expect(result).toBe(true);
-      expect(prisma.users.update).toHaveBeenCalledWith({
+      expect(mockPrismaService.users.update).toHaveBeenCalledWith({
         where: { user_id: mahasiswaId },
         data: {
           judul: null,
@@ -509,7 +562,7 @@ describe('ProfileService - Complete Coverage', () => {
       const result = await service.rejectGantiJudul(mahasiswaId);
 
       expect(result).toBe(true);
-      expect(prisma.users.update).toHaveBeenCalledWith({
+      expect(mockPrismaService.users.update).toHaveBeenCalledWith({
         where: { user_id: mahasiswaId },
         data: { judul_temp: '' },
       });
