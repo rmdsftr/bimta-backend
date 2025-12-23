@@ -14,7 +14,8 @@ module.exports = {
   coveragePathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/dist/',      
-    '\\.d\\.ts$'            
+    '\\.d\\.ts$',
+    "\\.module\\.ts$"            
   ],
 
   coverageDirectory: './coverage',
