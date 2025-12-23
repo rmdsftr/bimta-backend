@@ -2,13 +2,30 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProfileService } from '../../src/profile/profil.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { SupabaseService } from '../../src/supabase/supabase.service';
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 
-describe('ProfileService (Mocked)', () => {
+// Mock bcrypt
+jest.mock('bcrypt');
+
+describe('ProfileService - Complete Coverage', () => {
   let service: ProfileService;
   let prisma: PrismaService;
   let supabase: SupabaseService;
+
+  const mockPrismaService = {
+    users: {
+      findFirst: jest.fn(),
+      update: jest.fn(),
+    },
+  };
+
+  const mockSupabaseService = {
+    uploadPhoto: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -16,144 +33,496 @@ describe('ProfileService (Mocked)', () => {
         ProfileService,
         {
           provide: PrismaService,
-          useValue: {
-            users: {
-              findFirst: jest.fn(),
-              update: jest.fn()
-            }
-          }
+          useValue: mockPrismaService,
         },
         {
           provide: SupabaseService,
-          useValue: {
-            uploadPhoto: jest.fn()
-          }
-        }
+          useValue: mockSupabaseService,
+        },
       ],
     }).compile();
 
     service = module.get<ProfileService>(ProfileService);
     prisma = module.get<PrismaService>(PrismaService);
     supabase = module.get<SupabaseService>(SupabaseService);
+
+    // Mock console to avoid cluttering test output
+    jest.spyOn(console, 'error').mockImplementation();
   });
 
-  
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe('viewProfileMahasiswa', () => {
-    it('should return formatted profile data', async () => {
-      prisma.users.findFirst = jest.fn().mockResolvedValue({
-        user_id: '123',
-        nama: 'Tegar',
-        judul: 'A',
+    const mahasiswaId = 'M001';
+    const mockMahasiswa = {
+      user_id: 'M001',
+      nama: 'John Doe',
+      judul: 'Penelitian AI',
+      photo_url: 'https://example.com/photo.jpg',
+      judul_temp: 'Penelitian ML',
+      bimbingan_bimbingan_mahasiswa_idTousers: [
+        { status_bimbingan: 'ongoing' },
+        { status_bimbingan: 'ongoing' },
+      ],
+    };
+
+    it('should return mahasiswa profile data', async () => {
+      mockPrismaService.users.findFirst.mockResolvedValue(mockMahasiswa);
+
+      const result = await service.viewProfileMahasiswa(mahasiswaId);
+
+      expect(result).toEqual({
+        user_id: 'M001',
+        nama: 'John Doe',
+        judul: 'Penelitian AI',
+        photo_url: 'https://example.com/photo.jpg',
+        judul_temp: 'Penelitian ML',
+        status_bimbingan: ['ongoing', 'ongoing'],
+      });
+    });
+
+    it('should handle mahasiswa with no bimbingan', async () => {
+      const mahasiswaWithoutBimbingan = {
+        ...mockMahasiswa,
+        bimbingan_bimbingan_mahasiswa_idTousers: [],
+      };
+      mockPrismaService.users.findFirst.mockResolvedValue(
+        mahasiswaWithoutBimbingan,
+      );
+
+      const result = await service.viewProfileMahasiswa(mahasiswaId);
+
+      expect(result.status_bimbingan).toEqual([]);
+    });
+
+    it('should handle null photo_url', async () => {
+      const mahasiswaNoPhoto = {
+        ...mockMahasiswa,
         photo_url: null,
-        judul_temp: 'B',
-        bimbingan_bimbingan_mahasiswa_idTousers: [
-          { status_bimbingan: 'disetujui' },
-        ],
-      });
+      };
+      mockPrismaService.users.findFirst.mockResolvedValue(mahasiswaNoPhoto);
 
-      const result = await service.viewProfileMahasiswa('123');
-      expect(result.nama).toBe('Tegar');
-      expect(result.status_bimbingan).toEqual(['disetujui']);
+      const result = await service.viewProfileMahasiswa(mahasiswaId);
+
+      expect(result.photo_url).toBeNull();
+    });
+
+    // LINE 12: Test non-Error exception
+    it('should throw InternalServerErrorException for non-Error exceptions', async () => {
+      mockPrismaService.users.findFirst.mockRejectedValue('String error');
+
+      await expect(service.viewProfileMahasiswa(mahasiswaId)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should throw InternalServerErrorException for null error', async () => {
+      mockPrismaService.users.findFirst.mockRejectedValue(null);
+
+      await expect(service.viewProfileMahasiswa(mahasiswaId)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should rethrow Error instances', async () => {
+      const dbError = new Error('Database connection failed');
+      mockPrismaService.users.findFirst.mockRejectedValue(dbError);
+
+      await expect(service.viewProfileMahasiswa(mahasiswaId)).rejects.toThrow(
+        'Database connection failed',
+      );
     });
   });
 
-  
   describe('changePhoto', () => {
-    it('should upload file and update photo_url', async () => {
-      supabase.uploadPhoto = jest.fn().mockResolvedValue('photo.jpg');
-      prisma.users.update = jest.fn().mockResolvedValue({ photo_url: 'photo.jpg' });
+    const userId = 'M001';
+    const mockFile = {
+      fieldname: 'file',
+      originalname: 'photo.jpg',
+      mimetype: 'image/jpeg',
+      buffer: Buffer.from('test'),
+    } as Express.Multer.File;
 
-      const result = await service.changePhoto({} as any, '123');
-      expect(result).toEqual({ url: 'photo.jpg' });
+    it('should successfully upload and update photo', async () => {
+      const photoUrl = 'https://example.com/new-photo.jpg';
+      mockSupabaseService.uploadPhoto.mockResolvedValue(photoUrl);
+      mockPrismaService.users.update.mockResolvedValue({});
+
+      const result = await service.changePhoto(mockFile, userId);
+
+      expect(result).toEqual({ url: photoUrl });
+      expect(supabase.uploadPhoto).toHaveBeenCalledWith(mockFile);
+      expect(prisma.users.update).toHaveBeenCalledWith({
+        where: { user_id: userId },
+        data: { photo_url: photoUrl },
+      });
+    });
+
+    it('should throw error if upload fails', async () => {
+      mockSupabaseService.uploadPhoto.mockRejectedValue(
+        new Error('Upload failed'),
+      );
+
+      await expect(service.changePhoto(mockFile, userId)).rejects.toThrow(
+        'Upload failed',
+      );
+      expect(prisma.users.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw InternalServerErrorException for non-Error exceptions', async () => {
+      mockSupabaseService.uploadPhoto.mockRejectedValue('Upload error');
+
+      await expect(service.changePhoto(mockFile, userId)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should throw error if database update fails', async () => {
+      mockSupabaseService.uploadPhoto.mockResolvedValue(
+        'https://example.com/photo.jpg',
+      );
+      mockPrismaService.users.update.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.changePhoto(mockFile, userId)).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
-  
   describe('getPhotoProfile', () => {
-    it('should return photo_url', async () => {
-      prisma.users.findFirst = jest.fn().mockResolvedValue({ photo_url: 'abc.png' });
-      const result = await service.getPhotoProfile('1');
+    const userId = 'M001';
 
-      expect(result).toEqual({ url: 'abc.png' });
+    it('should return photo URL', async () => {
+      mockPrismaService.users.findFirst.mockResolvedValue({
+        photo_url: 'https://example.com/photo.jpg',
+      });
+
+      const result = await service.getPhotoProfile(userId);
+
+      expect(result).toEqual({ url: 'https://example.com/photo.jpg' });
+    });
+
+    it('should return null if no photo', async () => {
+      mockPrismaService.users.findFirst.mockResolvedValue({
+        photo_url: null,
+      });
+
+      const result = await service.getPhotoProfile(userId);
+
+      expect(result).toEqual({ url: null });
+    });
+
+    it('should return null if user not found', async () => {
+      mockPrismaService.users.findFirst.mockResolvedValue(null);
+
+      const result = await service.getPhotoProfile(userId);
+
+      expect(result).toEqual({ url: null });
+    });
+
+    it('should throw InternalServerErrorException for non-Error exceptions', async () => {
+      mockPrismaService.users.findFirst.mockRejectedValue(404);
+
+      await expect(service.getPhotoProfile(userId)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should rethrow Error instances', async () => {
+      mockPrismaService.users.findFirst.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.getPhotoProfile(userId)).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
-  
   describe('changePasswordUser', () => {
-    it('should throw error if old password mismatch', async () => {
-      prisma.users.findFirst = jest.fn().mockResolvedValue({ sandi: await bcrypt.hash('old', 10) });
+    const userId = 'M001';
+    const dto = {
+      sandiLama: 'oldPassword123',
+      sandiBaru: 'newPassword456',
+      konfirmasiSandi: 'newPassword456',
+    };
 
-      const dto = { sandiLama: 'salah', sandiBaru: 'baru', konfirmasiSandi: 'baru' };
-
-      await expect(service.changePasswordUser('1', dto)).rejects.toThrow(BadRequestException);
+    beforeEach(() => {
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('hashedNewPassword');
     });
 
-    it('should change password successfully', async () => {
-      prisma.users.findFirst = jest.fn().mockResolvedValue({ sandi: await bcrypt.hash('old', 10) });
-      prisma.users.update = jest.fn().mockResolvedValue(true);
+    it('should successfully change password', async () => {
+      mockPrismaService.users.findFirst.mockResolvedValue({
+        sandi: 'hashedOldPassword',
+      });
+      mockPrismaService.users.update.mockResolvedValue({});
 
-      const dto = { sandiLama: 'old', sandiBaru: 'baru', konfirmasiSandi: 'baru' };
+      const result = await service.changePasswordUser(userId, dto);
 
-      const result = await service.changePasswordUser('1', dto);
-      expect(result.message).toBe('Password berhasil diubah');
+      expect(result).toEqual({ message: 'Password berhasil diubah' });
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        'oldPassword123',
+        'hashedOldPassword',
+      );
+      expect(bcrypt.hash).toHaveBeenCalledWith('newPassword456', 12);
+    });
+
+    it('should throw BadRequestException if old password does not match', async () => {
+      mockPrismaService.users.findFirst.mockResolvedValue({
+        sandi: 'hashedOldPassword',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+
+      await expect(service.changePasswordUser(userId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.changePasswordUser(userId, dto)).rejects.toThrow(
+        'Sandi lama tidak cocok',
+      );
+      expect(prisma.users.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException if new passwords do not match', async () => {
+      mockPrismaService.users.findFirst.mockResolvedValue({
+        sandi: 'hashedOldPassword',
+      });
+      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+
+      const dtoMismatch = {
+        ...dto,
+        konfirmasiSandi: 'differentPassword',
+      };
+
+      await expect(
+        service.changePasswordUser(userId, dtoMismatch),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.changePasswordUser(userId, dtoMismatch),
+      ).rejects.toThrow('Sandi baru dan konfirmasi tidak sesuai');
+    });
+
+    it('should throw InternalServerErrorException for non-Error exceptions', async () => {
+      mockPrismaService.users.findFirst.mockRejectedValue({ code: 'P2025' });
+
+      await expect(service.changePasswordUser(userId, dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should rethrow Error instances', async () => {
+      mockPrismaService.users.findFirst.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.changePasswordUser(userId, dto)).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
-  
   describe('changenNumberUser', () => {
-    it('should update phone number', async () => {
-      prisma.users.update = jest.fn().mockResolvedValue(true);
+    const userId = 'M001';
+    const dto = {
+      nomorBaru: '081234567890',
+    };
 
-      const result = await service.changenNumberUser('1', { nomorBaru: '0899' });
-      expect(result.message).toBe('Nomor whatsapp berhasil diubah');
+    it('should successfully change phone number', async () => {
+      mockPrismaService.users.update.mockResolvedValue({});
+
+      const result = await service.changenNumberUser(userId, dto);
+
+      expect(result).toEqual({ message: 'Nomor whatsapp berhasil diubah' });
+      expect(prisma.users.update).toHaveBeenCalledWith({
+        where: { user_id: userId },
+        data: { no_whatsapp: '081234567890' },
+      });
+    });
+
+    it('should throw InternalServerErrorException for non-Error exceptions', async () => {
+      mockPrismaService.users.update.mockRejectedValue('Update failed');
+
+      await expect(service.changenNumberUser(userId, dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should rethrow Error instances', async () => {
+      mockPrismaService.users.update.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.changenNumberUser(userId, dto)).rejects.toThrow(
+        'Database error',
+      );
     });
   });
 
-  
   describe('getInfoMahasiswa', () => {
-    it('should return info object', async () => {
-      prisma.users.findFirst = jest.fn().mockResolvedValue({
-        judul: 'Proposal',
-        no_whatsapp: '0899'
-      });
+    const mahasiswaId = 'M001';
 
-      const result = await service.getInfoMahasiswa('1');
-      expect(result!.judul).toBe('Proposal');
+    it('should return mahasiswa info', async () => {
+      const mockInfo = {
+        judul: 'Penelitian AI',
+        no_whatsapp: '081234567890',
+      };
+      mockPrismaService.users.findFirst.mockResolvedValue(mockInfo);
+
+      const result = await service.getInfoMahasiswa(mahasiswaId);
+
+      expect(result).toEqual(mockInfo);
+    });
+
+    it('should return null if mahasiswa not found', async () => {
+      mockPrismaService.users.findFirst.mockResolvedValue(null);
+
+      const result = await service.getInfoMahasiswa(mahasiswaId);
+
+      expect(result).toBeNull();
+    });
+
+    it('should throw InternalServerErrorException for non-Error exceptions', async () => {
+      mockPrismaService.users.findFirst.mockRejectedValue([1, 2, 3]);
+
+      await expect(service.getInfoMahasiswa(mahasiswaId)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should rethrow Error instances', async () => {
+      mockPrismaService.users.findFirst.mockRejectedValue(
+        new Error('Connection timeout'),
+      );
+
+      await expect(service.getInfoMahasiswa(mahasiswaId)).rejects.toThrow(
+        'Connection timeout',
+      );
     });
   });
 
-  
   describe('gantiJudul', () => {
-    it('should update temp title', async () => {
-      prisma.users.update = jest.fn().mockResolvedValue(true);
-      await service.gantiJudul('1', { judulBaru: 'Baru' });
+    const mahasiswaId = 'M001';
+    const dto = {
+      judulBaru: 'Penelitian Machine Learning',
+    };
 
-      expect(prisma.users.update).toHaveBeenCalled();
-    });
-  });
+    it('should successfully update judul_temp', async () => {
+      mockPrismaService.users.update.mockResolvedValue({});
 
-  
-  describe('accGantiJudul', () => {
-    it('should accept title change and clear temp', async () => {
-      prisma.users.findFirst = jest.fn().mockResolvedValue({
-        judul: 'Lama',
-        judul_temp: 'Baru',
+      await service.gantiJudul(mahasiswaId, dto);
+
+      expect(prisma.users.update).toHaveBeenCalledWith({
+        where: { user_id: mahasiswaId },
+        data: { judul_temp: 'Penelitian Machine Learning' },
       });
+    });
 
-      prisma.users.update = jest.fn().mockResolvedValue(true);
+    it('should throw InternalServerErrorException for non-Error exceptions', async () => {
+      mockPrismaService.users.update.mockRejectedValue(undefined);
 
-      const result = await service.accGantiJudul('1');
-      expect(result).toBe(true);
+      await expect(service.gantiJudul(mahasiswaId, dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should rethrow Error instances', async () => {
+      mockPrismaService.users.update.mockRejectedValue(
+        new BadRequestException('Invalid data'),
+      );
+
+      await expect(service.gantiJudul(mahasiswaId, dto)).rejects.toThrow(
+        'Invalid data',
+      );
     });
   });
 
-  
-  describe('rejectGantiJudul', () => {
-    it('should clear judul_temp', async () => {
-      prisma.users.update = jest.fn().mockResolvedValue(true);
-      const result = await service.rejectGantiJudul('1');
+  describe('accGantiJudul', () => {
+    const mahasiswaId = 'M001';
+
+    it('should successfully accept judul change', async () => {
+      mockPrismaService.users.findFirst.mockResolvedValue({
+        judul: 'Old Title',
+        judul_temp: 'New Title',
+      });
+      mockPrismaService.users.update.mockResolvedValue({});
+
+      const result = await service.accGantiJudul(mahasiswaId);
 
       expect(result).toBe(true);
+      expect(prisma.users.update).toHaveBeenCalledWith({
+        where: { user_id: mahasiswaId },
+        data: {
+          judul: 'New Title',
+          judul_temp: '',
+        },
+      });
+    });
+
+    it('should handle null judul_temp', async () => {
+      mockPrismaService.users.findFirst.mockResolvedValue({
+        judul: 'Current Title',
+        judul_temp: null,
+      });
+      mockPrismaService.users.update.mockResolvedValue({});
+
+      const result = await service.accGantiJudul(mahasiswaId);
+
+      expect(result).toBe(true);
+      expect(prisma.users.update).toHaveBeenCalledWith({
+        where: { user_id: mahasiswaId },
+        data: {
+          judul: null,
+          judul_temp: '',
+        },
+      });
+    });
+
+    it('should throw InternalServerErrorException for non-Error exceptions', async () => {
+      mockPrismaService.users.findFirst.mockRejectedValue(false);
+
+      await expect(service.accGantiJudul(mahasiswaId)).rejects.toThrow(
+        InternalServerErrorException,
+      );
+    });
+
+    it('should rethrow Error instances', async () => {
+      mockPrismaService.users.findFirst.mockRejectedValue(
+        new Error('Query failed'),
+      );
+
+      await expect(service.accGantiJudul(mahasiswaId)).rejects.toThrow(
+        'Query failed',
+      );
+    });
+  });
+
+  describe('rejectGantiJudul', () => {
+    const mahasiswaId = 'M001';
+
+    it('should successfully reject judul change', async () => {
+      mockPrismaService.users.update.mockResolvedValue({});
+
+      const result = await service.rejectGantiJudul(mahasiswaId);
+
+      expect(result).toBe(true);
+      expect(prisma.users.update).toHaveBeenCalledWith({
+        where: { user_id: mahasiswaId },
+        data: { judul_temp: '' },
+      });
+    });
+
+    it('should handle update errors', async () => {
+      mockPrismaService.users.update.mockRejectedValue(
+        new Error('Update failed'),
+      );
+
+      await expect(service.rejectGantiJudul(mahasiswaId)).rejects.toThrow(
+        'Update failed',
+      );
     });
   });
 });

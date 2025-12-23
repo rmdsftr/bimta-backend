@@ -3,44 +3,38 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ProgressService } from "./progress.service";
 import { addProgressOnlineDto } from "./dto/add-progress.dto";
 import { KoreksiProgressDto } from "./dto/koreksi-progress.dto";
+import { pdfFileFilter } from "../utils/pdf-file-filter.util";
 
 @Controller('progress')
-export class ProgressController{
+export class ProgressController {
     constructor(
         private progressService: ProgressService
-    ){}
-    
+    ) { }
+
     @Post('add/:mahasiswa_id')
     @UseInterceptors(FileInterceptor('file', {
-        fileFilter: (req, file, cb) => {
-            if (file.mimetype !== 'application/pdf') {
-                // ✅ Ubah dari Error menjadi BadRequestException
-                cb(new BadRequestException('Only PDF files are allowed!'), false);
-            } else {
-                cb(null, true);
-            }
-        },
+        fileFilter: pdfFileFilter,
     }))
     async addProgressOnline(
         @Body() dto: addProgressOnlineDto,
-        @Param('mahasiswa_id') mahasiswa_id:string,
+        @Param('mahasiswa_id') mahasiswa_id: string,
         @UploadedFile() file: Express.Multer.File
-    ){
+    ) {
         return await this.progressService.addProgressOnline(dto, mahasiswa_id, file);
     }
 
     @Get(':mahasiswa_id')
-    async allProgressOnline(@Param('mahasiswa_id') mahasiswa_id:string){
+    async allProgressOnline(@Param('mahasiswa_id') mahasiswa_id: string) {
         return await this.progressService.allProgressOnline(mahasiswa_id);
     }
 
     @Get('dosen/:dosen_id')
-    async progressOnlineMahasiswa(@Param('dosen_id') dosen_id:string){
+    async progressOnlineMahasiswa(@Param('dosen_id') dosen_id: string) {
         return await this.progressService.progressOnlineMahasiswa(dosen_id);
     }
 
     @Get('pending/:dosen_id')
-    async hitungPendingReview(@Param('dosen_id') dosen_id:string){
+    async hitungPendingReview(@Param('dosen_id') dosen_id: string) {
         return await this.progressService.hitungPendingReview(dosen_id);
     }
 
@@ -53,7 +47,6 @@ export class ProgressController{
     @UseInterceptors(FileInterceptor('file', {
         fileFilter: (req, file, cb) => {
             if (file.mimetype !== 'application/pdf') {
-                // ✅ Ubah dari Error menjadi BadRequestException
                 cb(new BadRequestException('Only PDF files are allowed!'), false);
             } else {
                 cb(null, true);

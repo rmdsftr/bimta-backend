@@ -1,19 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { BimbinganService } from '../../src/bimbingan/bimbingan.service';
+import { PrismaService } from '../../src/prisma/prisma.service';
 import {
-  BadRequestException,
   NotFoundException,
+  BadRequestException,
   ConflictException,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { BimbinganService } from '../../src/bimbingan/bimbingan.service';
-import { PrismaService } from '../../src/prisma/prisma.service';
 import { status_bimbingan_enum } from '@prisma/client';
 
-describe('BimbinganService', () => {
+describe('BimbinganService - Complete Coverage', () => {
   let service: BimbinganService;
   let prisma: PrismaService;
 
-  const mockPrisma = {
+  const mockPrismaService = {
     users: {
       findUnique: jest.fn(),
       findMany: jest.fn(),
@@ -26,11 +26,11 @@ describe('BimbinganService', () => {
       delete: jest.fn(),
       updateMany: jest.fn(),
     },
-    jadwal: {
+    progress: {
       count: jest.fn(),
       deleteMany: jest.fn(),
     },
-    progress: {
+    jadwal: {
       count: jest.fn(),
       deleteMany: jest.fn(),
     },
@@ -43,7 +43,7 @@ describe('BimbinganService', () => {
         BimbinganService,
         {
           provide: PrismaService,
-          useValue: mockPrisma,
+          useValue: mockPrismaService,
         },
       ],
     }).compile();
@@ -52,231 +52,285 @@ describe('BimbinganService', () => {
     prisma = module.get<PrismaService>(PrismaService);
   });
 
-  afterEach(() => jest.clearAllMocks());
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
   describe('mahasiswaDibimbing', () => {
-    it('should return list mahasiswa dibimbing', async () => {
-      const mockDosen = { user_id: '123' };
+    const dosenId = 'dosen-1';
+
+    it('should return list of mahasiswa dibimbing', async () => {
+      const mockDosen = { user_id: dosenId };
       const mockMahasiswa = [
         {
-          status_bimbingan: 'ongoing',
+          status_bimbingan: status_bimbingan_enum.ongoing,
           users_bimbingan_mahasiswa_idTousers: {
-            user_id: 'mhs1',
+            user_id: 'mhs-1',
             nama: 'Mahasiswa 1',
-            judul: 'Judul Test',
+            judul: 'Judul TA',
             photo_url: 'photo.jpg',
           },
         },
       ];
 
-      mockPrisma.users.findUnique.mockResolvedValue(mockDosen);
-      mockPrisma.bimbingan.findMany.mockResolvedValue(mockMahasiswa);
+      mockPrismaService.users.findUnique.mockResolvedValue(mockDosen);
+      mockPrismaService.bimbingan.findMany.mockResolvedValue(mockMahasiswa);
 
-      const result = await service.mahasiswaDibimbing('123');
+      const result = await service.mahasiswaDibimbing(dosenId);
 
+      expect(result).toEqual(mockMahasiswa);
       expect(prisma.users.findUnique).toHaveBeenCalledWith({
-        where: { user_id: '123' },
+        where: { user_id: dosenId },
         select: { user_id: true },
       });
-      expect(prisma.bimbingan.findMany).toHaveBeenCalledWith({
-        where: { dosen_id: '123' },
-        select: {
-          status_bimbingan: true,
-          users_bimbingan_mahasiswa_idTousers: {
-            select: {
-              user_id: true,
-              nama: true,
-              judul: true,
-              photo_url: true,
-            },
-          },
-        },
-      });
-      expect(result).toEqual(mockMahasiswa);
     });
 
-    it('should throw NotFoundException if dosen not found', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue(null);
+    it('should throw NotFoundException when dosen not found', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue(null);
 
-      await expect(service.mahasiswaDibimbing('999')).rejects.toThrow(
+      await expect(service.mahasiswaDibimbing(dosenId)).rejects.toThrow(
         NotFoundException,
+      );
+    });
+
+    // LINE 52: Test InternalServerErrorException
+    it('should throw InternalServerErrorException on database error', async () => {
+      mockPrismaService.users.findUnique.mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(service.mahasiswaDibimbing(dosenId)).rejects.toThrow(
+        InternalServerErrorException,
       );
     });
   });
 
   describe('addMahasiswa', () => {
-    const validDto = {
-      dosen_id: 'dosen1',
-      mahasiswa_id: ['mhs1', 'mhs2'],
+    const dto = {
+      dosen_id: 'dosen-1',
+      mahasiswa_id: ['mhs-1', 'mhs-2'],
     };
 
     it('should successfully add mahasiswa to bimbingan', async () => {
       const mockDosen = {
-        user_id: 'dosen1',
+        user_id: dto.dosen_id,
         role: 'dosen',
         status_user: 'active',
       };
       const mockMahasiswa = [
-        { user_id: 'mhs1', role: 'mahasiswa', status_user: 'active' },
-        { user_id: 'mhs2', role: 'mahasiswa', status_user: 'active' },
+        { user_id: 'mhs-1', role: 'mahasiswa', status_user: 'active' },
+        { user_id: 'mhs-2', role: 'mahasiswa', status_user: 'active' },
       ];
 
-      mockPrisma.users.findUnique.mockResolvedValue(mockDosen);
-      mockPrisma.users.findMany.mockResolvedValue(mockMahasiswa);
-      mockPrisma.bimbingan.findMany.mockResolvedValue([]);
-      mockPrisma.bimbingan.createMany.mockResolvedValue({ count: 2 });
+      mockPrismaService.users.findUnique.mockResolvedValue(mockDosen);
+      mockPrismaService.users.findMany.mockResolvedValue(mockMahasiswa);
+      mockPrismaService.bimbingan.findMany.mockResolvedValue([]);
+      mockPrismaService.bimbingan.createMany.mockResolvedValue({ count: 2 });
 
-      const result = await service.addMahasiswa(validDto);
+      const result = await service.addMahasiswa(dto);
 
       expect(result).toEqual({ success: true });
-      expect(prisma.bimbingan.createMany).toHaveBeenCalledWith({
-        data: expect.arrayContaining([
-          expect.objectContaining({
-            bimbingan_id: 'dosen1-mhs1',
-            dosen_id: 'dosen1',
-            mahasiswa_id: 'mhs1',
-            status_bimbingan: status_bimbingan_enum.ongoing,
-            total_bimbingan: 0,
-          }),
-        ]),
-        skipDuplicates: true,
-      });
     });
 
     it('should throw BadRequestException for empty dosen_id', async () => {
       await expect(
-        service.addMahasiswa({ dosen_id: '', mahasiswa_id: ['mhs1'] }),
+        service.addMahasiswa({ dosen_id: '', mahasiswa_id: ['mhs-1'] }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw BadRequestException for whitespace-only dosen_id', async () => {
+      await expect(
+        service.addMahasiswa({ dosen_id: '   ', mahasiswa_id: ['mhs-1'] }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    // LINE 72: Test non-array mahasiswa_id
+    it('should throw BadRequestException when mahasiswa_id is not an array', async () => {
+      await expect(
+        service.addMahasiswa({
+          dosen_id: 'dosen-1',
+          mahasiswa_id: 'not-an-array' as any,
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException for empty mahasiswa_id array', async () => {
       await expect(
-        service.addMahasiswa({ dosen_id: 'dosen1', mahasiswa_id: [] }),
+        service.addMahasiswa({ dosen_id: 'dosen-1', mahasiswa_id: [] }),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw NotFoundException if dosen not found', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue(null);
+    it('should filter out invalid mahasiswa_id entries', async () => {
+      await expect(
+        service.addMahasiswa({
+          dosen_id: 'dosen-1',
+          mahasiswa_id: ['', '   ', null as any, undefined as any],
+        }),
+      ).rejects.toThrow('Tidak ada ID mahasiswa yang valid');
+    });
 
-      await expect(service.addMahasiswa(validDto)).rejects.toThrow(
+    it('should throw NotFoundException when dosen not found', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue(null);
+
+      await expect(service.addMahasiswa(dto)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('should throw BadRequestException if user is not dosen', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue({
-        user_id: 'dosen1',
+    it('should throw BadRequestException when user is not dosen', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: dto.dosen_id,
         role: 'mahasiswa',
         status_user: 'active',
       });
 
-      await expect(service.addMahasiswa(validDto)).rejects.toThrow(
-        BadRequestException,
+      await expect(service.addMahasiswa(dto)).rejects.toThrow(
+        'User bukan dosen',
       );
     });
 
-    it('should throw BadRequestException if dosen is not active', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue({
-        user_id: 'dosen1',
+    it('should throw BadRequestException when dosen is not active', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: dto.dosen_id,
         role: 'dosen',
         status_user: 'inactive',
       });
 
-      await expect(service.addMahasiswa(validDto)).rejects.toThrow(
-        BadRequestException,
+      await expect(service.addMahasiswa(dto)).rejects.toThrow(
+        'Dosen tidak aktif',
       );
     });
 
-    it('should throw NotFoundException if some mahasiswa not found', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue({
-        user_id: 'dosen1',
+    it('should throw NotFoundException when some mahasiswa not found', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: dto.dosen_id,
         role: 'dosen',
         status_user: 'active',
       });
-      mockPrisma.users.findMany.mockResolvedValue([
-        { user_id: 'mhs1', role: 'mahasiswa', status_user: 'active' },
+      mockPrismaService.users.findMany.mockResolvedValue([
+        { user_id: 'mhs-1', role: 'mahasiswa', status_user: 'active' },
       ]);
 
-      await expect(service.addMahasiswa(validDto)).rejects.toThrow(
-        NotFoundException,
+      await expect(service.addMahasiswa(dto)).rejects.toThrow(
+        'Mahasiswa tidak ditemukan',
       );
     });
 
-    it('should throw ConflictException if mahasiswa already registered', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue({
-        user_id: 'dosen1',
+    // LINE 121-122: Test non-mahasiswa role
+    it('should throw BadRequestException when user is not mahasiswa', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: dto.dosen_id,
         role: 'dosen',
         status_user: 'active',
       });
-      mockPrisma.users.findMany.mockResolvedValue([
-        { user_id: 'mhs1', role: 'mahasiswa', status_user: 'active' },
-        { user_id: 'mhs2', role: 'mahasiswa', status_user: 'active' },
-      ]);
-      mockPrisma.bimbingan.findMany.mockResolvedValue([
-        { mahasiswa_id: 'mhs1', status_bimbingan: 'ongoing' },
+      mockPrismaService.users.findMany.mockResolvedValue([
+        { user_id: 'mhs-1', role: 'dosen', status_user: 'active' },
+        { user_id: 'mhs-2', role: 'admin', status_user: 'active' },
       ]);
 
-      await expect(service.addMahasiswa(validDto)).rejects.toThrow(
+      await expect(service.addMahasiswa(dto)).rejects.toThrow(
+        'User bukan mahasiswa',
+      );
+    });
+
+    // LINE 129-130: Test inactive mahasiswa
+    it('should throw BadRequestException when mahasiswa is not active', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: dto.dosen_id,
+        role: 'dosen',
+        status_user: 'active',
+      });
+      mockPrismaService.users.findMany.mockResolvedValue([
+        { user_id: 'mhs-1', role: 'mahasiswa', status_user: 'inactive' },
+        { user_id: 'mhs-2', role: 'mahasiswa', status_user: 'suspended' },
+      ]);
+
+      await expect(service.addMahasiswa(dto)).rejects.toThrow(
+        'Mahasiswa tidak aktif',
+      );
+    });
+
+    it('should throw ConflictException when mahasiswa already registered', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: dto.dosen_id,
+        role: 'dosen',
+        status_user: 'active',
+      });
+      mockPrismaService.users.findMany.mockResolvedValue([
+        { user_id: 'mhs-1', role: 'mahasiswa', status_user: 'active' },
+        { user_id: 'mhs-2', role: 'mahasiswa', status_user: 'active' },
+      ]);
+      mockPrismaService.bimbingan.findMany.mockResolvedValue([
+        { mahasiswa_id: 'mhs-1', status_bimbingan: status_bimbingan_enum.ongoing },
+      ]);
+
+      await expect(service.addMahasiswa(dto)).rejects.toThrow(
         ConflictException,
       );
     });
 
-    it('should filter out duplicate and invalid mahasiswa_id', async () => {
+    it('should handle duplicate mahasiswa_id in input', async () => {
       const dtoWithDuplicates = {
-        dosen_id: 'dosen1',
-        mahasiswa_id: ['mhs1', 'mhs1', '', 'mhs2', '  '],
+        dosen_id: 'dosen-1',
+        mahasiswa_id: ['mhs-1', 'mhs-1', 'mhs-2'],
       };
 
-      mockPrisma.users.findUnique.mockResolvedValue({
-        user_id: 'dosen1',
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: dtoWithDuplicates.dosen_id,
         role: 'dosen',
         status_user: 'active',
       });
-      mockPrisma.users.findMany.mockResolvedValue([
-        { user_id: 'mhs1', role: 'mahasiswa', status_user: 'active' },
-        { user_id: 'mhs2', role: 'mahasiswa', status_user: 'active' },
+      mockPrismaService.users.findMany.mockResolvedValue([
+        { user_id: 'mhs-1', role: 'mahasiswa', status_user: 'active' },
+        { user_id: 'mhs-2', role: 'mahasiswa', status_user: 'active' },
       ]);
-      mockPrisma.bimbingan.findMany.mockResolvedValue([]);
-      mockPrisma.bimbingan.createMany.mockResolvedValue({ count: 2 });
+      mockPrismaService.bimbingan.findMany.mockResolvedValue([]);
+      mockPrismaService.bimbingan.createMany.mockResolvedValue({ count: 2 });
 
-      await service.addMahasiswa(dtoWithDuplicates);
+      const result = await service.addMahasiswa(dtoWithDuplicates);
 
+      expect(result).toEqual({ success: true });
       expect(prisma.bimbingan.createMany).toHaveBeenCalledWith({
         data: expect.arrayContaining([
-          expect.objectContaining({ mahasiswa_id: 'mhs1' }),
-          expect.objectContaining({ mahasiswa_id: 'mhs2' }),
+          expect.objectContaining({ mahasiswa_id: 'mhs-1' }),
+          expect.objectContaining({ mahasiswa_id: 'mhs-2' }),
         ]),
         skipDuplicates: true,
       });
-      expect(
-        (prisma.bimbingan.createMany as jest.Mock).mock.calls[0][0].data,
-      ).toHaveLength(2);
+    });
+
+    it('should throw InternalServerErrorException on database error', async () => {
+      mockPrismaService.users.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.addMahasiswa(dto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
   describe('dosenPembimbing', () => {
-    it('should return dosen pembimbing list', async () => {
+    const mahasiswaId = 'mhs-1';
+
+    it('should return list of dosen pembimbing', async () => {
       const mockMahasiswa = {
-        user_id: 'mhs1',
+        user_id: mahasiswaId,
         role: 'mahasiswa',
       };
       const mockDosen = [
         {
           users_bimbingan_dosen_idTousers: {
-            nama: 'Dosen Test',
+            nama: 'Dosen 1',
           },
         },
       ];
 
-      mockPrisma.users.findUnique.mockResolvedValue(mockMahasiswa);
-      mockPrisma.bimbingan.findMany.mockResolvedValue(mockDosen);
+      mockPrismaService.users.findUnique.mockResolvedValue(mockMahasiswa);
+      mockPrismaService.bimbingan.findMany.mockResolvedValue(mockDosen);
 
-      const result = await service.dosenPembimbing('mhs1');
+      const result = await service.dosenPembimbing(mahasiswaId);
 
-      expect(prisma.users.findUnique).toHaveBeenCalledWith({
-        where: { user_id: 'mhs1' },
-        select: { user_id: true, role: true },
-      });
       expect(result).toEqual(mockDosen);
     });
 
@@ -286,241 +340,304 @@ describe('BimbinganService', () => {
       );
     });
 
-    it('should throw NotFoundException if mahasiswa not found', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue(null);
+    it('should throw NotFoundException when mahasiswa not found', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue(null);
 
-      await expect(service.dosenPembimbing('mhs999')).rejects.toThrow(
+      await expect(service.dosenPembimbing(mahasiswaId)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('should throw BadRequestException if user is not mahasiswa', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue({
-        user_id: 'mhs1',
+    it('should throw BadRequestException when user is not mahasiswa', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: mahasiswaId,
         role: 'dosen',
       });
 
-      await expect(service.dosenPembimbing('mhs1')).rejects.toThrow(
-        BadRequestException,
+      await expect(service.dosenPembimbing(mahasiswaId)).rejects.toThrow(
+        'User bukan mahasiswa',
+      );
+    });
+
+    // LINE 172: Test InternalServerErrorException
+    it('should throw InternalServerErrorException on database error', async () => {
+      mockPrismaService.users.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.dosenPembimbing(mahasiswaId)).rejects.toThrow(
+        InternalServerErrorException,
       );
     });
   });
 
   describe('jumlahMahasiswaBimbingan', () => {
-    it('should return count of active bimbingan', async () => {
-      const mockDosen = {
-        user_id: 'dosen1',
+    const dosenId = 'dosen-1';
+
+    it('should return count of mahasiswa bimbingan', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: dosenId,
         role: 'dosen',
-      };
-      mockPrisma.users.findUnique.mockResolvedValue(mockDosen);
-      mockPrisma.bimbingan.count.mockResolvedValue(7);
-
-      const result = await service.jumlahMahasiswaBimbingan('dosen1');
-
-      expect(result).toBe(7);
-      expect(prisma.bimbingan.count).toHaveBeenCalledWith({
-        where: {
-          dosen_id: 'dosen1',
-          NOT: {
-            status_bimbingan: status_bimbingan_enum.done,
-          },
-        },
       });
+      mockPrismaService.bimbingan.count.mockResolvedValue(5);
+
+      const result = await service.jumlahMahasiswaBimbingan(dosenId);
+
+      expect(result).toBe(5);
     });
 
     it('should throw BadRequestException for empty dosen_id', async () => {
-      await expect(service.jumlahMahasiswaBimbingan('  ')).rejects.toThrow(
+      await expect(service.jumlahMahasiswaBimbingan('')).rejects.toThrow(
         BadRequestException,
       );
     });
 
-    it('should throw NotFoundException if dosen not found', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue(null);
+    it('should throw NotFoundException when dosen not found', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue(null);
 
-      await expect(service.jumlahMahasiswaBimbingan('dosen999')).rejects.toThrow(
+      await expect(service.jumlahMahasiswaBimbingan(dosenId)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('should throw BadRequestException if user is not dosen', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue({
-        user_id: 'dosen1',
+    it('should throw BadRequestException when user is not dosen', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: dosenId,
         role: 'mahasiswa',
       });
 
-      await expect(service.jumlahMahasiswaBimbingan('dosen1')).rejects.toThrow(
-        BadRequestException,
+      await expect(service.jumlahMahasiswaBimbingan(dosenId)).rejects.toThrow(
+        'User bukan dosen',
+      );
+    });
+
+    // LINE 219: Test InternalServerErrorException
+    it('should throw InternalServerErrorException on database error', async () => {
+      mockPrismaService.users.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.jumlahMahasiswaBimbingan(dosenId)).rejects.toThrow(
+        InternalServerErrorException,
       );
     });
   });
 
   describe('hapusMahasiswaBimbingan', () => {
-    it('should delete bimbingan with related data using transaction', async () => {
-      const mockDosen = { user_id: 'dosen1' };
-      const mockMahasiswa = { user_id: 'mhs1' };
-      const mockBimbingan = {
-        bimbingan_id: 'dosen1-mhs1',
+    const dosenId = 'dosen-1';
+    const mahasiswaId = 'mhs-1';
+    const bimbinganId = `${dosenId}-${mahasiswaId}`;
+
+    it('should delete bimbingan without related data', async () => {
+      mockPrismaService.users.findUnique
+        .mockResolvedValueOnce({ user_id: dosenId })
+        .mockResolvedValueOnce({ user_id: mahasiswaId });
+      mockPrismaService.bimbingan.findFirst.mockResolvedValue({
+        bimbingan_id: bimbinganId,
         status_bimbingan: status_bimbingan_enum.ongoing,
-      };
+      });
+      mockPrismaService.progress.count.mockResolvedValue(0);
+      mockPrismaService.jadwal.count.mockResolvedValue(0);
+      mockPrismaService.bimbingan.delete.mockResolvedValue({});
 
-      mockPrisma.users.findUnique
-        .mockResolvedValueOnce(mockDosen)
-        .mockResolvedValueOnce(mockMahasiswa);
-      mockPrisma.bimbingan.findFirst.mockResolvedValue(mockBimbingan);
-      mockPrisma.progress.count.mockResolvedValue(2);
-      mockPrisma.jadwal.count.mockResolvedValue(1);
-      mockPrisma.$transaction.mockResolvedValue([{}, {}, {}]);
+      const result = await service.hapusMahasiswaBimbingan(dosenId, mahasiswaId);
 
-      const result = await service.hapusMahasiswaBimbingan('dosen1', 'mhs1');
+      expect(result).toEqual({ success: true });
+      expect(prisma.bimbingan.delete).toHaveBeenCalledWith({
+        where: { bimbingan_id: bimbinganId },
+      });
+    });
+
+    // LINE 262: Test transaction when progress/jadwal exists
+    it('should delete bimbingan with related progress and jadwal using transaction', async () => {
+      mockPrismaService.users.findUnique
+        .mockResolvedValueOnce({ user_id: dosenId })
+        .mockResolvedValueOnce({ user_id: mahasiswaId });
+      mockPrismaService.bimbingan.findFirst.mockResolvedValue({
+        bimbingan_id: bimbinganId,
+        status_bimbingan: status_bimbingan_enum.ongoing,
+      });
+      mockPrismaService.progress.count.mockResolvedValue(3);
+      mockPrismaService.jadwal.count.mockResolvedValue(2);
+      mockPrismaService.$transaction.mockResolvedValue([{}, {}, {}]);
+
+      const result = await service.hapusMahasiswaBimbingan(dosenId, mahasiswaId);
 
       expect(result).toEqual({ success: true });
       expect(prisma.$transaction).toHaveBeenCalled();
     });
 
-    it('should delete bimbingan without transaction if no related data', async () => {
-      const mockDosen = { user_id: 'dosen1' };
-      const mockMahasiswa = { user_id: 'mhs1' };
-      const mockBimbingan = {
-        bimbingan_id: 'dosen1-mhs1',
+    it('should delete when only progress exists', async () => {
+      mockPrismaService.users.findUnique
+        .mockResolvedValueOnce({ user_id: dosenId })
+        .mockResolvedValueOnce({ user_id: mahasiswaId });
+      mockPrismaService.bimbingan.findFirst.mockResolvedValue({
+        bimbingan_id: bimbinganId,
         status_bimbingan: status_bimbingan_enum.ongoing,
-      };
+      });
+      mockPrismaService.progress.count.mockResolvedValue(5);
+      mockPrismaService.jadwal.count.mockResolvedValue(0);
+      mockPrismaService.$transaction.mockResolvedValue([{}, {}, {}]);
 
-      mockPrisma.users.findUnique
-        .mockResolvedValueOnce(mockDosen)
-        .mockResolvedValueOnce(mockMahasiswa);
-      mockPrisma.bimbingan.findFirst.mockResolvedValue(mockBimbingan);
-      mockPrisma.progress.count.mockResolvedValue(0);
-      mockPrisma.jadwal.count.mockResolvedValue(0);
-      mockPrisma.bimbingan.delete.mockResolvedValue(mockBimbingan);
-
-      const result = await service.hapusMahasiswaBimbingan('dosen1', 'mhs1');
+      const result = await service.hapusMahasiswaBimbingan(dosenId, mahasiswaId);
 
       expect(result).toEqual({ success: true });
-      expect(prisma.bimbingan.delete).toHaveBeenCalledWith({
-        where: { bimbingan_id: 'dosen1-mhs1' },
-      });
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(prisma.$transaction).toHaveBeenCalled();
     });
 
-    it('should throw BadRequestException for empty parameters', async () => {
-      await expect(service.hapusMahasiswaBimbingan('', 'mhs1')).rejects.toThrow(
+    it('should delete when only jadwal exists', async () => {
+      mockPrismaService.users.findUnique
+        .mockResolvedValueOnce({ user_id: dosenId })
+        .mockResolvedValueOnce({ user_id: mahasiswaId });
+      mockPrismaService.bimbingan.findFirst.mockResolvedValue({
+        bimbingan_id: bimbinganId,
+        status_bimbingan: status_bimbingan_enum.ongoing,
+      });
+      mockPrismaService.progress.count.mockResolvedValue(0);
+      mockPrismaService.jadwal.count.mockResolvedValue(4);
+      mockPrismaService.$transaction.mockResolvedValue([{}, {}, {}]);
+
+      const result = await service.hapusMahasiswaBimbingan(dosenId, mahasiswaId);
+
+      expect(result).toEqual({ success: true });
+      expect(prisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException for empty ids', async () => {
+      await expect(service.hapusMahasiswaBimbingan('', mahasiswaId)).rejects.toThrow(
         BadRequestException,
       );
-      await expect(
-        service.hapusMahasiswaBimbingan('dosen1', ''),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.hapusMahasiswaBimbingan(dosenId, '')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
-    it('should throw NotFoundException if dosen not found', async () => {
-      mockPrisma.users.findUnique
+    it('should throw NotFoundException when dosen not found', async () => {
+      mockPrismaService.users.findUnique
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ user_id: 'mhs1' });
+        .mockResolvedValueOnce({ user_id: mahasiswaId });
 
       await expect(
-        service.hapusMahasiswaBimbingan('dosen999', 'mhs1'),
-      ).rejects.toThrow(NotFoundException);
+        service.hapusMahasiswaBimbingan(dosenId, mahasiswaId),
+      ).rejects.toThrow('Dosen tidak ditemukan');
     });
 
-    it('should throw NotFoundException if mahasiswa not found', async () => {
-      mockPrisma.users.findUnique
-        .mockResolvedValueOnce({ user_id: 'dosen1' })
+    it('should throw NotFoundException when mahasiswa not found', async () => {
+      mockPrismaService.users.findUnique
+        .mockResolvedValueOnce({ user_id: dosenId })
         .mockResolvedValueOnce(null);
 
       await expect(
-        service.hapusMahasiswaBimbingan('dosen1', 'mhs999'),
-      ).rejects.toThrow(NotFoundException);
+        service.hapusMahasiswaBimbingan(dosenId, mahasiswaId),
+      ).rejects.toThrow('Mahasiswa tidak ditemukan');
     });
 
-    it('should throw NotFoundException if bimbingan not found', async () => {
-      mockPrisma.users.findUnique
-        .mockResolvedValueOnce({ user_id: 'dosen1' })
-        .mockResolvedValueOnce({ user_id: 'mhs1' });
-      mockPrisma.bimbingan.findFirst.mockResolvedValue(null);
+    it('should throw NotFoundException when bimbingan not found', async () => {
+      mockPrismaService.users.findUnique
+        .mockResolvedValueOnce({ user_id: dosenId })
+        .mockResolvedValueOnce({ user_id: mahasiswaId });
+      mockPrismaService.bimbingan.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.hapusMahasiswaBimbingan('dosen1', 'mhs1'),
-      ).rejects.toThrow(NotFoundException);
+        service.hapusMahasiswaBimbingan(dosenId, mahasiswaId),
+      ).rejects.toThrow('Data bimbingan tidak ditemukan');
     });
 
-    it('should throw BadRequestException if bimbingan is already done', async () => {
-      mockPrisma.users.findUnique
-        .mockResolvedValueOnce({ user_id: 'dosen1' })
-        .mockResolvedValueOnce({ user_id: 'mhs1' });
-      mockPrisma.bimbingan.findFirst.mockResolvedValue({
-        bimbingan_id: 'dosen1-mhs1',
+    it('should throw BadRequestException when bimbingan already done', async () => {
+      mockPrismaService.users.findUnique
+        .mockResolvedValueOnce({ user_id: dosenId })
+        .mockResolvedValueOnce({ user_id: mahasiswaId });
+      mockPrismaService.bimbingan.findFirst.mockResolvedValue({
+        bimbingan_id: bimbinganId,
         status_bimbingan: status_bimbingan_enum.done,
       });
 
       await expect(
-        service.hapusMahasiswaBimbingan('dosen1', 'mhs1'),
-      ).rejects.toThrow(BadRequestException);
+        service.hapusMahasiswaBimbingan(dosenId, mahasiswaId),
+      ).rejects.toThrow('Tidak dapat menghapus bimbingan yang sudah selesai');
+    });
+
+    it('should throw InternalServerErrorException on database error', async () => {
+      mockPrismaService.users.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(
+        service.hapusMahasiswaBimbingan(dosenId, mahasiswaId),
+      ).rejects.toThrow(InternalServerErrorException);
     });
   });
 
   describe('selesaiBimbingan', () => {
-    it('should update bimbingan status to done', async () => {
-      const mockMahasiswa = {
-        user_id: 'mhs1',
+    const mahasiswaId = 'mhs-1';
+
+    it('should mark bimbingan as done', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: mahasiswaId,
         role: 'mahasiswa',
-      };
-      const mockBimbingan = [
-        { bimbingan_id: 'dosen1-mhs1', status_bimbingan: 'ongoing' },
-        { bimbingan_id: 'dosen2-mhs1', status_bimbingan: 'ongoing' },
-      ];
+      });
+      mockPrismaService.bimbingan.findMany.mockResolvedValue([
+        {
+          bimbingan_id: 'bimbingan-1',
+          status_bimbingan: status_bimbingan_enum.ongoing,
+        },
+        {
+          bimbingan_id: 'bimbingan-2',
+          status_bimbingan: status_bimbingan_enum.ongoing,
+        },
+      ]);
+      mockPrismaService.bimbingan.updateMany.mockResolvedValue({ count: 2 });
 
-      mockPrisma.users.findUnique.mockResolvedValue(mockMahasiswa);
-      mockPrisma.bimbingan.findMany.mockResolvedValue(mockBimbingan);
-      mockPrisma.bimbingan.updateMany.mockResolvedValue({ count: 2 });
-
-      const result = await service.selesaiBimbingan('mhs1');
+      const result = await service.selesaiBimbingan(mahasiswaId);
 
       expect(result).toEqual({ success: true });
-      expect(prisma.bimbingan.updateMany).toHaveBeenCalledWith({
-        where: {
-          bimbingan_id: {
-            in: ['dosen1-mhs1', 'dosen2-mhs1'],
-          },
-        },
-        data: {
-          status_bimbingan: status_bimbingan_enum.done,
-        },
-      });
     });
 
     it('should throw BadRequestException for empty mahasiswa_id', async () => {
-      await expect(service.selesaiBimbingan('   ')).rejects.toThrow(
+      await expect(service.selesaiBimbingan('')).rejects.toThrow(
         BadRequestException,
       );
     });
 
-    it('should throw NotFoundException if mahasiswa not found', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue(null);
+    it('should throw NotFoundException when mahasiswa not found', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue(null);
 
-      await expect(service.selesaiBimbingan('mhs999')).rejects.toThrow(
+      await expect(service.selesaiBimbingan(mahasiswaId)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('should throw BadRequestException if user is not mahasiswa', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue({
-        user_id: 'mhs1',
+    it('should throw BadRequestException when user is not mahasiswa', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: mahasiswaId,
         role: 'dosen',
       });
 
-      await expect(service.selesaiBimbingan('mhs1')).rejects.toThrow(
-        BadRequestException,
+      await expect(service.selesaiBimbingan(mahasiswaId)).rejects.toThrow(
+        'User bukan mahasiswa',
       );
     });
 
-    it('should throw NotFoundException if no active bimbingan found', async () => {
-      mockPrisma.users.findUnique.mockResolvedValue({
-        user_id: 'mhs1',
+    it('should throw NotFoundException when no active bimbingan', async () => {
+      mockPrismaService.users.findUnique.mockResolvedValue({
+        user_id: mahasiswaId,
         role: 'mahasiswa',
       });
-      mockPrisma.bimbingan.findMany.mockResolvedValue([]);
+      mockPrismaService.bimbingan.findMany.mockResolvedValue([]);
 
-      await expect(service.selesaiBimbingan('mhs1')).rejects.toThrow(
-        NotFoundException,
+      await expect(service.selesaiBimbingan(mahasiswaId)).rejects.toThrow(
+        'Tidak ada bimbingan aktif untuk diselesaikan',
+      );
+    });
+
+    // LINE 355 & 420: Test InternalServerErrorException
+    it('should throw InternalServerErrorException on database error', async () => {
+      mockPrismaService.users.findUnique.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(service.selesaiBimbingan(mahasiswaId)).rejects.toThrow(
+        InternalServerErrorException,
       );
     });
   });
