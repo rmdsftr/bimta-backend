@@ -24,7 +24,7 @@ export class ProgressService{
             });
             
             if (idBimbinganList.length === 0) {
-                throw new NotFoundException("Bimbingan tidak ditemukan untuk mahasiswa ini"); // ✅ Change to NotFoundException
+                throw new NotFoundException("Bimbingan tidak ditemukan untuk mahasiswa ini"); 
             }
             
             const { publicUrl, filename } = await this.supabaseService.uploadProgressFile(file);
@@ -51,7 +51,7 @@ export class ProgressService{
             return submit;
         } catch (error) {
             console.error(error);
-            // ✅ Check for HTTP exceptions first
+            
             if (error instanceof NotFoundException || error instanceof BadRequestException) {
                 throw error;
             }
@@ -74,18 +74,28 @@ export class ProgressService{
             });
             
             if (!bimbinganId) {
-                throw new NotFoundException('Bimbingan tidak ditemukan untuk mahasiswa ini'); // ✅ Change to NotFoundException
+                throw new NotFoundException('Bimbingan tidak ditemukan untuk mahasiswa ini'); 
             }
             
             const data = await this.prisma.progress.findMany({
                 distinct: ['file_name'], 
+                select: {
+                    file_progress: true,
+                    submit_at: true,
+                    subject_progress: true,
+                    file_name: true,
+                    note_mahasiswa: true,
+                    status_progress: true,
+                    evaluasi_dosen: true,
+                    file_koreksi: true
+                },
                 where: {
                     file_name: {
                         not: null,
                     },
                     jenis_bimbingan: 'online',
                     bimbingan_id: bimbinganId.bimbingan_id, 
-                },
+                }, 
             });
             
             const all = data.map((item) => {
@@ -105,13 +115,16 @@ export class ProgressService{
                     namaFile: item.file_name,
                     pesan: item.note_mahasiswa,
                     status: item.status_progress,
+                    file_url: item.file_progress,
+                    evaluasi_dosen : item.evaluasi_dosen,
+                    file_koreksi: item.file_koreksi
                 };
             });
             
             return all;
         } catch (error) {
             console.error(error);
-            // ✅ Check for HTTP exceptions first
+            
             if (error instanceof NotFoundException || error instanceof BadRequestException) {
                 throw error;
             }
@@ -138,17 +151,23 @@ export class ProgressService{
                     },
                 },
                 select: {
+                    progress_id: true, 
                     subject_progress: true,
                     note_mahasiswa: true,
                     file_name: true,
                     file_progress: true,
                     status_progress: true,
+                    submit_at: true, 
+                    evaluasi_dosen: true, 
+                    file_koreksi: true, 
+                    koreksi_at: true, 
                     bimbingan: {
                         select: {
                             users_bimbingan_mahasiswa_idTousers: {
                                 select: {
                                     user_id: true,
                                     nama: true,
+                                    photo_url: true
                                 },
                             },
                         },
@@ -157,15 +176,21 @@ export class ProgressService{
             });
             
             const data = progress.map((item) => ({
+                progress_id: item.progress_id, 
                 nama: item.bimbingan.users_bimbingan_mahasiswa_idTousers.nama,
                 nim: item.bimbingan.users_bimbingan_mahasiswa_idTousers.user_id,
+                photo_url: item.bimbingan.users_bimbingan_mahasiswa_idTousers.photo_url,
                 judul: item.subject_progress,
-                pesan : item.note_mahasiswa,
+                pesan: item.note_mahasiswa,
                 status: item.status_progress,
                 file_name: item.file_name,
-                file_url: item.file_progress
-            }))
-
+                file_url: item.file_progress,
+                submit_at: item.submit_at, 
+                evaluasi_dosen: item.evaluasi_dosen, 
+                file_koreksi: item.file_koreksi, 
+                koreksi_at: item.koreksi_at, 
+            }));
+            
             return data;
         } catch (error) {
             console.error(error);
@@ -185,7 +210,7 @@ export class ProgressService{
                     bimbingan_id: true
                 }
             });
-
+            
             const pending = await this.prisma.progress.count({
                 where: {
                     status_progress: {
@@ -197,8 +222,8 @@ export class ProgressService{
                     }
                 }
             })
-
-            return { count: pending }; // ✅ Return object instead of plain number
+            
+            return { count: pending }; 
         } catch (error) {
             console.error(error);
             if (!(error instanceof Error)) {
@@ -207,50 +232,66 @@ export class ProgressService{
             throw error;
         }
     }
-
+    
     async markAsRead(progress_id: string) {
         try {
+            console.log('🔍 Attempting to mark as read:', progress_id);
+            
             const progress = await this.prisma.progress.findUnique({
                 where: { progress_id }
             });
-
+            
+            console.log('📊 Found progress:', progress);
+            
             if (!progress) {
-                throw new NotFoundException('Progress tidak ditemukan');
+                throw new NotFoundException(`Progress dengan ID ${progress_id} tidak ditemukan`);
             }
-
+            
+            
             if (progress.status_progress === 'unread') {
-                await this.prisma.progress.update({
+                const updated = await this.prisma.progress.update({
                     where: { progress_id },
                     data: {
                         status_progress: 'read'
                     }
                 });
-
+                
+                console.log('✅ Successfully updated to read:', updated);
+                
                 return {
                     status: 'success',
-                    message: 'Status progress berhasil diubah menjadi read'
+                    message: 'Status progress berhasil diubah menjadi read',
+                    data: updated
                 };
             }
-
+            
             return {
                 status: 'success',
-                message: 'Status progress sudah read'
+                message: 'Status progress sudah read',
+                data: progress
             };
-
+            
         } catch (error) {
+            console.error('❌ Error in markAsRead:', error);
+            
             if (error instanceof NotFoundException) {
                 throw error;
             }
+            
             throw new BadRequestException(`Gagal mengubah status: ${error.message}`);
         }
     }
-
+    
     async submitKoreksi(
         progress_id: string,
         dto: KoreksiProgressDto,
         file?: Express.Multer.File
     ) {
         try {
+            console.log('🔍 Submitting koreksi for:', progress_id);
+            console.log('📝 DTO:', dto);
+            console.log('📎 File:', file ? file.originalname : 'No file');
+            
             const progress = await this.prisma.progress.findUnique({
                 where: { progress_id },
                 include: {
@@ -261,64 +302,54 @@ export class ProgressService{
                     }
                 }
             });
-
+            
             if (!progress) {
-                throw new NotFoundException('Progress tidak ditemukan');
+                throw new NotFoundException(`Progress dengan ID ${progress_id} tidak ditemukan`);
             }
-
+            
+            
             if (dto.status_progress === 'need_revision' && !file) {
                 throw new BadRequestException('File koreksi wajib diupload untuk status revisi');
             }
-
+            
             let fileKoreksiUrl = progress.file_koreksi;
-
+            
+            
             if (file) {
+                console.log('📤 Uploading koreksi file...');
                 const uploadResult = await this.supabaseService.uploadProgressFile(file, 'koreksi');
                 fileKoreksiUrl = uploadResult.publicUrl;
+                console.log('✅ File uploaded:', uploadResult.publicUrl);
             }
-
+            
+            
             const updatedProgress = await this.prisma.progress.update({
                 where: { progress_id },
                 data: {
                     evaluasi_dosen: dto.evaluasi_dosen,
-                    status_progress: dto.status_progress,
+                    status_progress: status_progress_enum.done,
                     file_koreksi: fileKoreksiUrl,
                     koreksi_at: new Date()
                 }
             });
-
-            if (dto.status_progress === 'need_revision') {
-                const timestamp = Date.now();
-                const newProgressId = `PROG-${progress.bimbingan.mahasiswa_id}-${timestamp}`;
-
-                await this.prisma.progress.create({
-                    data: {
-                        progress_id: newProgressId,
-                        bimbingan_id: progress.bimbingan_id,
-                        subject_progress: `Revisi ${progress.revisi_number + 1}: ${progress.subject_progress}`,
-                        file_progress: progress.file_progress,
-                        file_name: progress.file_name,
-                        submit_at: new Date(),
-                        status_progress: 'unread',
-                        jenis_bimbingan: 'online',
-                        revisi_number: progress.revisi_number + 1,
-                        parent_progress_id: progress_id
-                    }
-                });
-            }
-
+            
+            console.log('✅ Progress updated:', updatedProgress);
+            
             return {
                 status: 'success',
                 message: dto.status_progress === 'done' 
-                    ? 'Progress berhasil disetujui' 
-                    : 'Koreksi berhasil dikirim',
+                ? 'Progress berhasil disetujui' 
+                : 'Koreksi berhasil dikirim, mahasiswa perlu merevisi',
                 data: updatedProgress
             };
-
+            
         } catch (error) {
+            console.error('❌ Error in submitKoreksi:', error);
+            
             if (error instanceof NotFoundException || error instanceof BadRequestException) {
                 throw error;
             }
+            
             throw new BadRequestException(`Gagal mengirim koreksi: ${error.message}`);
         }
     }
