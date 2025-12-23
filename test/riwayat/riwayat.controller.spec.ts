@@ -1,12 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RiwayatController } from '../../src/riwayat/riwayat.controller';
 import { RiwayatService } from '../../src/riwayat/riwayat.service';
+import { NotFoundException } from '@nestjs/common';
 
-describe('RiwayatController', () => {
+describe('RiwayatController - Complete Coverage', () => {
   let controller: RiwayatController;
   let service: RiwayatService;
 
-  const mockService = {
+  const mockRiwayatService = {
     riwayatBimbingan: jest.fn(),
   };
 
@@ -16,23 +17,54 @@ describe('RiwayatController', () => {
       providers: [
         {
           provide: RiwayatService,
-          useValue: mockService,
+          useValue: mockRiwayatService,
         },
       ],
     }).compile();
 
     controller = module.get<RiwayatController>(RiwayatController);
     service = module.get<RiwayatService>(RiwayatService);
-
     jest.clearAllMocks();
   });
 
-  it('should return riwayat from service', async () => {
-    mockService.riwayatBimbingan.mockResolvedValue(['data']);
+  describe('getRiwayat', () => {
+    it('should return riwayat bimbingan', async () => {
+      const mahasiswa_id = '123';
+      const mockResult = [
+        {
+          id: 'prog1',
+          tanggal: new Date('2024-01-10'),
+          pembahasan: 'Progress 1',
+          hasil: 'Good',
+          jenis: 'online',
+        },
+      ];
 
-    const result = await controller.getRiwayat('MHS1');
+      mockRiwayatService.riwayatBimbingan.mockResolvedValue(mockResult);
 
-    expect(result).toEqual(['data']);
-    expect(mockService.riwayatBimbingan).toHaveBeenCalledWith('MHS1');
+      const result = await controller.getRiwayat(mahasiswa_id);
+
+      expect(service.riwayatBimbingan).toHaveBeenCalledWith(mahasiswa_id);
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should handle empty array', async () => {
+      const mahasiswa_id = '456';
+      mockRiwayatService.riwayatBimbingan.mockResolvedValue([]);
+
+      const result = await controller.getRiwayat(mahasiswa_id);
+      expect(result).toEqual([]);
+    });
+
+    it('should propagate service errors', async () => {
+      const mahasiswa_id = '999';
+      mockRiwayatService.riwayatBimbingan.mockRejectedValue(
+        new NotFoundException('Mahasiswa tidak ditemukan')
+      );
+
+      await expect(controller.getRiwayat(mahasiswa_id)).rejects.toThrow(
+        NotFoundException
+      );
+    });
   });
 });
