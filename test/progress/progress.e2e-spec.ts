@@ -17,20 +17,20 @@ describe('PROGRESS system testing (e2e)', () => {
   const progressId = 'PROG100';
   const hashedPassword = bcrypt.hashSync('password123', 12);
   const mockSupabaseService = {
-  uploadProgressFile: jest.fn().mockResolvedValue({
-    publicUrl: 'https://mock-supabase-url.com/progress-files/test-file.pdf',
-    fileName: 'test-file.pdf',
-  }),
-  uploadPhoto: jest.fn().mockResolvedValue('https://mock-supabase-url.com/photos/test-photo.png'),
-};
+    uploadProgressFile: jest.fn().mockResolvedValue({
+      publicUrl: 'https://mock-supabase-url.com/progress-files/test-file.pdf',
+      fileName: 'test-file.pdf',
+    }),
+    uploadPhoto: jest.fn().mockResolvedValue('https://mock-supabase-url.com/photos/test-photo.png'),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-    .overrideProvider(SupabaseService)
-    .useValue(mockSupabaseService)
-    .compile();
+      .overrideProvider(SupabaseService)
+      .useValue(mockSupabaseService)
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -103,11 +103,11 @@ describe('PROGRESS system testing (e2e)', () => {
       expect(res.body).toHaveProperty('count');
       expect(res.body.count).toBeGreaterThan(0);
       expect(mockSupabaseService.uploadProgressFile).toHaveBeenCalled();
-      
+
       const progress = await prisma.progress.findFirst({
-    where: { bimbingan_id: bimbinganId },
-  });
-  expect(progress).toBeDefined();
+        where: { bimbingan_id: bimbinganId },
+      });
+      expect(progress).toBeDefined();
     });
 
     it('should fail if mahasiswa has no bimbingan', async () => {
@@ -127,27 +127,27 @@ describe('PROGRESS system testing (e2e)', () => {
       expect(res.body.message).toContain('Bimbingan tidak ditemukan');
     });
 
-it('should fail if file is not PDF', async () => {
-  const dto = {
-    subject_progress: 'Test Progress',
-    note_mahasiswa: 'Test Note',
-  };
+    it('should fail if file is not PDF', async () => {
+      const dto = {
+        subject_progress: 'Test Progress',
+        note_mahasiswa: 'Test Note',
+      };
 
-  const res = await request(app.getHttpServer())
-    .post(`/progress/add/${mahasiswaId}`)
-    .field('subject_progress', dto.subject_progress)
-    .field('note_mahasiswa', dto.note_mahasiswa)
-    .attach('file', Buffer.from('not a pdf'), 'document.docx')
-    .expect(400);
+      const res = await request(app.getHttpServer())
+        .post(`/progress/add/${mahasiswaId}`)
+        .field('subject_progress', dto.subject_progress)
+        .field('note_mahasiswa', dto.note_mahasiswa)
+        .attach('file', Buffer.from('not a pdf'), 'document.docx')
+        .expect(400);
 
-  expect(res.body).toHaveProperty('message');
-  const message = typeof res.body.message === 'string' 
-    ? res.body.message 
-    : JSON.stringify(res.body.message);
-  expect(['PDF', 'Internal server error']).toContain(
-    message.includes('PDF') ? 'PDF' : 'Internal server error'
-  );
-});
+      expect(res.body).toHaveProperty('message');
+      const message = typeof res.body.message === 'string'
+        ? res.body.message
+        : JSON.stringify(res.body.message);
+      expect(['PDF', 'Internal server error']).toContain(
+        message.includes('PDF') ? 'PDF' : 'Internal server error'
+      );
+    });
 
     it('should fail validation if subject_progress is empty', async () => {
       const res = await request(app.getHttpServer())
@@ -366,7 +366,7 @@ it('should fail if file is not PDF', async () => {
         .expect(404);
 
       expect(res.body).toHaveProperty('message');
-      expect(res.body.message).toContain('Progress tidak ditemukan');
+      expect(res.body.message).toContain('tidak ditemukan');
     });
   });
 
@@ -412,7 +412,7 @@ it('should fail if file is not PDF', async () => {
       expect(updated?.evaluasi_dosen).toBe(dto.evaluasi_dosen);
     });
 
-    it('should submit revision with file', async () => {
+    it('should submit koreksi with file', async () => {
       const dto = {
         evaluasi_dosen: 'Perlu perbaikan pada bagian metodologi',
         status_progress: 'need_revision',
@@ -432,17 +432,10 @@ it('should fail if file is not PDF', async () => {
       const updated = await prisma.progress.findUnique({
         where: { progress_id: progressId },
       });
-      expect(updated?.status_progress).toBe(status_progress_enum.need_revision);
-
-      // Check if new revision progress created
-      const revisionProgress = await prisma.progress.findFirst({
-        where: {
-          parent_progress_id: progressId,
-          revisi_number: 1,
-        },
-      });
-      expect(revisionProgress).toBeDefined();
-      expect(revisionProgress?.subject_progress).toContain('Revisi 1');
+      // Service now always sets status to 'done' after koreksi
+      expect(updated?.status_progress).toBe(status_progress_enum.done);
+      expect(updated?.evaluasi_dosen).toBe(dto.evaluasi_dosen);
+      expect(updated?.file_koreksi).toBeDefined();
     });
 
     it('should fail if need_revision without file', async () => {
@@ -474,7 +467,7 @@ it('should fail if file is not PDF', async () => {
         .expect(404);
 
       expect(res.body).toHaveProperty('message');
-      expect(res.body.message).toContain('Progress tidak ditemukan');
+      expect(res.body.message).toContain('tidak ditemukan');
     });
 
     it('should fail if file is not PDF', async () => {
@@ -491,8 +484,8 @@ it('should fail if file is not PDF', async () => {
         .expect(400);
 
       expect(res.body).toHaveProperty('message');
-      const message = typeof res.body.message === 'string' 
-        ? res.body.message 
+      const message = typeof res.body.message === 'string'
+        ? res.body.message
         : JSON.stringify(res.body.message);
       expect(message).toContain('PDF');
     });

@@ -13,20 +13,22 @@ describe('PROFILE system testing (e2e)', () => {
 
   const mahasiswaId = 'M100';
   const userId = 'U100';
+  const dosenId = 'D100';
+  const bimbinganId = 'B100';
   const hashedPassword = bcrypt.hashSync('password123', 12);
   const mockSupabaseService = {
-  uploadPhoto: jest.fn().mockResolvedValue('https://mock-url.com/photo.png'),
-};
+    uploadPhoto: jest.fn().mockResolvedValue('https://mock-url.com/photo.png'),
+  };
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-    .overrideProvider(SupabaseService)
-    .useValue({
-      uploadPhoto: jest.fn().mockResolvedValue('https://fake-url.com/photo.png'),
-    })
-    .compile();
+      .overrideProvider(SupabaseService)
+      .useValue({
+        uploadPhoto: jest.fn().mockResolvedValue('https://fake-url.com/photo.png'),
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
@@ -40,10 +42,10 @@ describe('PROFILE system testing (e2e)', () => {
   });
 
   beforeEach(async () => {
-    await prisma.jadwal.deleteMany({});        
+    await prisma.jadwal.deleteMany({});
     await prisma.progress.deleteMany({});
     await prisma.jadwal_dosen.deleteMany({});
-    await prisma.bimbingan.deleteMany({});     
+    await prisma.bimbingan.deleteMany({});
     await prisma.users.deleteMany();
 
     await prisma.users.createMany({
@@ -64,8 +66,27 @@ describe('PROFILE system testing (e2e)', () => {
           role: 'mahasiswa',
           status_user: 'active',
         },
+        {
+          user_id: dosenId,
+          nama: 'Dosen Test',
+          no_whatsapp: '0833333333',
+          sandi: hashedPassword,
+          role: 'dosen',
+          status_user: 'active',
+        },
       ],
       skipDuplicates: true,
+    });
+
+    // Create bimbingan record for mahasiswa
+    await prisma.bimbingan.create({
+      data: {
+        bimbingan_id: bimbinganId,
+        mahasiswa_id: mahasiswaId,
+        dosen_id: dosenId,
+        status_bimbingan: 'ongoing',
+        total_bimbingan: 0,
+      },
     });
   });
 
@@ -94,9 +115,9 @@ describe('PROFILE system testing (e2e)', () => {
     it('should upload new photo', async () => {
 
       const pngBuffer = Buffer.from(
-    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-    'base64'
-  );
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+        'base64'
+      );
 
       const res = await request(app.getHttpServer())
         .patch(`/profil/change/${userId}`)
@@ -159,7 +180,7 @@ describe('PROFILE system testing (e2e)', () => {
       const res = await request(app.getHttpServer())
         .post(`/profil/change/${userId}`)
         .send(dto)
-        .expect(400); 
+        .expect(400);
 
       expect(res.body).toHaveProperty('message');
     });
@@ -187,8 +208,8 @@ describe('PROFILE system testing (e2e)', () => {
       const res = await request(app.getHttpServer())
         .patch(`/profil/changeNumber/${userId}`)
         .send(dto)
-        .expect(400); 
-    
+        .expect(400);
+
 
       expect(res.body).toHaveProperty('message');
     });
